@@ -1,10 +1,14 @@
 import axios from "axios";
 
+// Create Axios instance
 const instance = axios.create({
   baseURL: "http://localhost:8000/api",
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
+// Request interceptor: attach access token
 instance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -16,16 +20,30 @@ instance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Response interceptor: handle 401 and refresh logic
 instance.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.href = "/login";
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Skip 401 handling for login and register endpoints
+    if (
+      originalRequest.url.includes("/login")
+    ) {
+      return Promise.reject(error); 
     }
+
+      if (originalRequest._retry) {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+        return Promise.reject(error);
+      }
+
+      originalRequest._retry = true;
+
     return Promise.reject(error);
   }
+
 );
 
 export default instance;
