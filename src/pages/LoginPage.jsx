@@ -1,4 +1,5 @@
 import React, { useState, useContext } from "react";
+import API from "../api/axios";
 import {
   Box,
   Paper,
@@ -7,46 +8,80 @@ import {
   Button,
   Alert,
   CircularProgress,
-  useTheme,
   Grid,
+  Divider,
 } from "@mui/material";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 
 const LoginPage = () => {
-  const theme = useTheme();
-  const navigate = useNavigate();
   const { login } = useContext(AuthContext);
   const {
     register,
     handleSubmit,
+    setError,
+    clearErrors,
     formState: { errors },
   } = useForm();
-  const [error, setError] = useState("");
+
   const [loading, setLoading] = useState(false);
+  const [isRegister, setIsRegister] = useState(false);
 
   const onSubmit = async (data) => {
-    setError("");
     setLoading(true);
+
     try {
-      await login(data.username, data.password);
+      if (isRegister) {
+        clearErrors(); 
+        await API.post("/register", data);
+        alert("Registration successful! Please login.");
+        setIsRegister(false);
+      } else {
+        await login(data.username, data.password);
+      }
     } catch (err) {
-      setError(err?.response?.data?.detail || "Invalid username or password.");
+      if (err.response && err.response.data) {
+        const apiErrors = err.response.data;
+
+        // handle invalid login error
+        if (apiErrors.error) {
+          setError("root", {
+            type: "server",
+            message: apiErrors.error,
+          });
+        } else {
+          // attach field-level validation errors (for registration)
+          Object.keys(apiErrors).forEach((field) => {
+            setError(field, {
+              type: "server",
+              message: apiErrors[field][0],
+            });
+          });
+        }
+      } else {
+        setError("root", {
+          type: "server",
+          message: "Server error, please try again",
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const toggleForm = () => {
+    setIsRegister(!isRegister);
+    clearErrors();
+  };
+
   return (
     <Grid container sx={{ height: "95vh", width: "100vw", m: 0 }}>
-
+      {/* Left side */}
       <Grid
         item
         xs={12}
         md={6}
         sx={{
-          
           background: "linear-gradient(to right, #1976d2, #42a5f5)",
           color: "#fff",
           display: "flex",
@@ -58,14 +93,14 @@ const LoginPage = () => {
           textAlign: "center",
         }}
       >
-        <Box sx={{maxWidth: 400, mx: 8}}>
-        <Typography variant="h3" fontWeight="bold" gutterBottom>
-          Blog Management System
-        </Typography>
+        <Box sx={{ maxWidth: 400, mx: 8 }}>
+          <Typography variant="h3" fontWeight="bold" gutterBottom>
+            Blog Management System
+          </Typography>
         </Box>
       </Grid>
 
-
+      {/* Right side */}
       <Grid
         item
         xs={10}
@@ -79,23 +114,64 @@ const LoginPage = () => {
           bgcolor: "#fff",
         }}
       >
-        <Paper elevation={6} sx={{ p: 4, width: "100%", maxWidth: 400 }}>
-          <Typography variant="h4" fontWeight="bold" gutterBottom align="center">
-            Login
+        <Paper
+          elevation={20}
+          sx={{
+            borderRadius: "15px",
+            bgcolor: "#e4e3e3ff",
+            p: 4,
+            width: "100%",
+            maxWidth: 400,
+          }}
+        >
+          <Typography
+            variant="h4"
+            fontWeight="bold"
+            gutterBottom
+            align="center"
+            color="Black"
+          >
+            {isRegister ? "Sign Up" : "Sign In"}
           </Typography>
 
-          {error && (
+          {/* show root-level errors */}
+          {errors.root?.message && (
             <Alert severity="error" sx={{ my: 2 }}>
-              {error}
+              {errors.root.message}
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 2 }}>
+          <Box
+            component="form"
+            onSubmit={handleSubmit(onSubmit)}
+            sx={{ mb: "10px", mt: "-10px" }}
+          >
+            {isRegister && (
+              <>
+                <TextField
+                  fullWidth
+                  label="Name"
+                  margin="normal"
+                  {...register("name", { required: "Name is required" })}
+                  error={!!errors.name}
+                  helperText={errors.name?.message}
+                />
+
+                <TextField
+                  fullWidth
+                  label="Email"
+                  margin="normal"
+                  {...register("email", { required: "Email is required" })}
+                  error={!!errors.email}
+                  helperText={errors.email?.message}
+                />
+              </>
+            )}
+
             <TextField
               fullWidth
               label="Username"
               margin="normal"
-              autoComplete="username"
               {...register("username", { required: "Username is required" })}
               error={!!errors.username}
               helperText={errors.username?.message}
@@ -106,7 +182,6 @@ const LoginPage = () => {
               label="Password"
               type="password"
               margin="normal"
-              autoComplete="current-password"
               {...register("password", { required: "Password is required" })}
               error={!!errors.password}
               helperText={errors.password?.message}
@@ -117,19 +192,66 @@ const LoginPage = () => {
               fullWidth
               variant="contained"
               disabled={loading}
-                sx={{
-                marginTop: '10px',
-                borderRadius:'100px',
-                background:"#444444",
+              sx={{
+                mt: 2,
+                borderRadius: "100px",
+                background: "primary",
                 color: "white",
-                "&:hover": { backgroundColor: "#444444d8" },
+                "&:hover": { backgroundColor: "#0d8cc7d8" },
                 fontWeight: 600,
               }}
             >
-              {loading ? <CircularProgress size={24} color="inherit" /> : "Login"}
+              {loading ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : isRegister ? (
+                "Register"
+              ) : (
+                "Login"
+              )}
             </Button>
+          </Box>
 
+          <Divider>or</Divider>
 
+          <Box sx={{ height: "60px" }}>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={() => {
+                window.location.href =
+                  "http://localhost:8000/api/auth/google/redirect";
+              }}
+              sx={{
+                marginTop: "10px",
+                borderRadius: "100px",
+                background: "primary",
+                color: "white",
+                mb: "3px",
+                "&:hover": { backgroundColor: "#0d8cc7d8" },
+                fontWeight: 600,
+              }}
+            >
+              Continue with Google
+            </Button>
+          </Box>
+
+          <Divider sx={{ my: 2 }} />
+
+          <Box sx={{ textAlign: "center" }}>
+            <Button
+              type="button"
+              variant="text"
+              onClick={toggleForm}
+              sx={{
+                color: "primary.main",
+                "&:hover": { backgroundColor: "#d8d8d8" },
+                fontWeight: 300,
+              }}
+            >
+              {isRegister
+                ? "Already have an account? Sign In"
+                : "Don't have an account? Sign Up"}
+            </Button>
           </Box>
         </Paper>
       </Grid>

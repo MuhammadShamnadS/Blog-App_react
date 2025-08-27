@@ -26,7 +26,7 @@ instance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Skip 401 handling for login and register endpoints
+    // Skip 401 handling for login endpoints
     if (
       originalRequest.url.includes("/login")
     ) {

@@ -8,6 +8,9 @@ import LoginPage from "../pages/LoginPage";
 import DashboardRouter from "../pages/Dashboards/DashboardRouter";
 import Dashboard from "../pages/Dashboards/Admin/AdminDashboard";
 import RequireAuth from "../components/RequireAuth";
+import GoogleSuccess from "../pages/GoogleSuccessPage";
+import GuestDashboard from "../pages/Dashboards/Guest/GuestDashboard";
+import RegisterPage from "../pages/RegisterPage";
 
 const routes = [
   {
@@ -15,6 +18,8 @@ const routes = [
     children: [
       { path: "/", element: <LoginPage /> },
       { path: "/login", element: <LoginPage /> },
+      {path: "/google-success", element: <GoogleSuccess/>},
+      {path: "/register",element:<RegisterPage/>}
     ],
   },
   {
@@ -26,6 +31,7 @@ const routes = [
         children: [
           { index: true, element: <DashboardRouter /> },
           { path: "Home", element: <RequireAuth allowedRoles={["admin"]}><Dashboard /></RequireAuth> },
+          {path: "Home", element: <RequireAuth allowedRoles={["guest"]}><GuestDashboard/></RequireAuth>}
         ],
       },
     ],

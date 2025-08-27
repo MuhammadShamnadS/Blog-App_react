@@ -11,17 +11,14 @@ import {
   Box,
   ListItemButton,
   IconButton,
-  Collapse,
   useTheme,
   useMediaQuery,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useNavigate, Outlet } from "react-router-dom";
-import ExpandLess from "@mui/icons-material/ExpandLess";
-import ExpandMore from "@mui/icons-material/ExpandMore";
 import LogoutButton from "../components/LogoutButton";
 import { AuthContext } from "../context/AuthContext";
-import { blue } from "@mui/material/colors";
+
 
 const drawerWidth = 200;
 
@@ -32,7 +29,6 @@ const DashboardLayout = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [drawerOpen, setDrawerOpen] = useState(true);
-  const [openRegistration, setOpenRegistration] = useState(false);
 
   const navItems = {
     admin: [

@@ -9,7 +9,7 @@ const PublicLayout = () => {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    if (user) {
+    if (user && window.location.pathname !== "/register") {
       navigate("/dashboard");
     } else {
       setChecking(false);
