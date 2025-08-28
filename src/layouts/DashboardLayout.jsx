@@ -31,8 +31,19 @@ const DashboardLayout = () => {
   const [drawerOpen, setDrawerOpen] = useState(true);
 
   const navItems = {
+    
     admin: [
       { label: "Home", path: "/dashboard" },
+      ...(user?.is_manual === 0 ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }] : [])
+    ],
+    guest: [
+    ...(user?.is_manual === 0 ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }] : [])
+    ],
+    author: [
+      ...(user?.is_manual === 0 ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }] : [])
+    ],
+    editor: [
+      ...(user?.is_manual === 0 ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }] : [])
     ],
   };
 

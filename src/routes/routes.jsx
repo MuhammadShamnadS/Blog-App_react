@@ -10,7 +10,10 @@ import Dashboard from "../pages/Dashboards/Admin/AdminDashboard";
 import RequireAuth from "../components/RequireAuth";
 import GoogleSuccess from "../pages/GoogleSuccessPage";
 import GuestDashboard from "../pages/Dashboards/Guest/GuestDashboard";
-import RegisterPage from "../pages/RegisterPage";
+import ForgotPasswordPage from "../pages/Password-restpage";
+import PasswordChange from "../pages/PasswordChange";
+
+
 
 const routes = [
   {
@@ -19,7 +22,8 @@ const routes = [
       { path: "/", element: <LoginPage /> },
       { path: "/login", element: <LoginPage /> },
       {path: "/google-success", element: <GoogleSuccess/>},
-      {path: "/register",element:<RegisterPage/>}
+      {path: "/password-reset",element:<ForgotPasswordPage/>},
+
     ],
   },
   {
@@ -31,6 +35,7 @@ const routes = [
         children: [
           { index: true, element: <DashboardRouter /> },
           { path: "Home", element: <RequireAuth allowedRoles={["admin"]}><Dashboard /></RequireAuth> },
+          { path: "Passwordchange", element: <RequireAuth allowedRoles={["admin","guest"]}><PasswordChange/></RequireAuth>},
           {path: "Home", element: <RequireAuth allowedRoles={["guest"]}><GuestDashboard/></RequireAuth>}
         ],
       },

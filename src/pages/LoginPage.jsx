@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { useForm } from "react-hook-form";
 import { AuthContext } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const LoginPage = () => {
   const { login } = useContext(AuthContext);
@@ -23,9 +24,10 @@ const LoginPage = () => {
     clearErrors,
     formState: { errors },
   } = useForm();
-
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
+
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -186,7 +188,9 @@ const LoginPage = () => {
               error={!!errors.password}
               helperText={errors.password?.message}
             />
-
+    <Button onClick={() => navigate('/password-reset')}>
+      Forgot Password
+    </Button>
             <Button
               type="submit"
               fullWidth
@@ -212,6 +216,7 @@ const LoginPage = () => {
           </Box>
 
           <Divider>or</Divider>
+
 
           <Box sx={{ height: "60px" }}>
             <Button
