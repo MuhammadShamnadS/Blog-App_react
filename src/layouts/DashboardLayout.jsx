@@ -34,16 +34,20 @@ const DashboardLayout = () => {
     
     admin: [
       { label: "Home", path: "/dashboard" },
-      ...(user?.is_manual === 0 ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }] : [])
+      {label: "Role Requests", path: "/dashboard/pending-request"}
     ],
     guest: [
-    ...(user?.is_manual === 0 ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }] : [])
+      {label:"Home", path: "/dashboard"},
+    ...(user?.is_manual === 0 ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }] : []),
+    {label: "Request Role",path: "/dashboard/requestrole"},
     ],
     author: [
-      ...(user?.is_manual === 0 ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }] : [])
+      ...(user?.is_manual === 0 ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }] : []),
+      {label: "Request Role",path: "/dashboard/requestrole"},
     ],
     editor: [
-      ...(user?.is_manual === 0 ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }] : [])
+      ...(user?.is_manual === 0 ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }] : []),
+      {label: "Request Role",path: "/dashboard/requestrole"},
     ],
   };
 

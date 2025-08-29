@@ -12,6 +12,8 @@ import GoogleSuccess from "../pages/GoogleSuccessPage";
 import GuestDashboard from "../pages/Dashboards/Guest/GuestDashboard";
 import ForgotPasswordPage from "../pages/Password-restpage";
 import PasswordChange from "../pages/PasswordChange";
+import RequestRole from "../pages/RequestRole";
+import AdminRoleRequests from "../pages/Dashboards/Admin/AdminRoleRequests";
 
 
 
@@ -35,8 +37,14 @@ const routes = [
         children: [
           { index: true, element: <DashboardRouter /> },
           { path: "Home", element: <RequireAuth allowedRoles={["admin"]}><Dashboard /></RequireAuth> },
-          { path: "Passwordchange", element: <RequireAuth allowedRoles={["admin","guest"]}><PasswordChange/></RequireAuth>},
-          {path: "Home", element: <RequireAuth allowedRoles={["guest"]}><GuestDashboard/></RequireAuth>}
+          { path: "Passwordchange", element: <RequireAuth allowedRoles={["editor","guest","author"]}><PasswordChange/></RequireAuth>},
+          {path: "Home", element: <RequireAuth allowedRoles={["guest"]}><GuestDashboard/></RequireAuth>},
+          {path :"requestrole", element: <RequireAuth allowedRoles={["guest","author","editor"]}><RequestRole></RequestRole></RequireAuth>},
+          {path: "pending-request", element: <RequireAuth allowedRoles={["admin"]}><AdminRoleRequests></AdminRoleRequests></RequireAuth>},
+
+        
+        
+        
         ],
       },
     ],

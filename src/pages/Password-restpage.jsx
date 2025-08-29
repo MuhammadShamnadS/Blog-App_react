@@ -95,7 +95,7 @@ const PasswordResetPage = () => {
 
   return (
     <Container maxWidth="sm">
-      <Paper elevation={3} sx={{ p: 4, mt: 6 }}>
+      <Paper elevation={20} sx={{ p: 4, mt: 6 }}>
         <Typography variant="h5" gutterBottom>
           Password Reset
         </Typography>
