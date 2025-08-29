@@ -44,6 +44,7 @@ const DashboardLayout = () => {
     author: [
       ...(user?.is_manual === 0 ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }] : []),
       {label: "Request Role",path: "/dashboard/requestrole"},
+      {label: "Posts",path: "/dashboard/posts"},
     ],
     editor: [
       ...(user?.is_manual === 0 ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }] : []),

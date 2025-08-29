@@ -14,6 +14,7 @@ import ForgotPasswordPage from "../pages/Password-restpage";
 import PasswordChange from "../pages/PasswordChange";
 import RequestRole from "../pages/RequestRole";
 import AdminRoleRequests from "../pages/Dashboards/Admin/AdminRoleRequests";
+import AuthorPosts from "../pages/Dashboards/Authors/AuthorDashboard";
 
 
 
@@ -41,6 +42,7 @@ const routes = [
           {path: "Home", element: <RequireAuth allowedRoles={["guest"]}><GuestDashboard/></RequireAuth>},
           {path :"requestrole", element: <RequireAuth allowedRoles={["guest","author","editor"]}><RequestRole></RequestRole></RequireAuth>},
           {path: "pending-request", element: <RequireAuth allowedRoles={["admin"]}><AdminRoleRequests></AdminRoleRequests></RequireAuth>},
+          {path: "posts", element: <RequireAuth allowedRoles={["author"]}><AuthorPosts/></RequireAuth>},
 
         
         
