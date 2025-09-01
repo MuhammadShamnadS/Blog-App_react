@@ -15,6 +15,9 @@ import PasswordChange from "../pages/PasswordChange";
 import RequestRole from "../pages/RequestRole";
 import AdminRoleRequests from "../pages/Dashboards/Admin/AdminRoleRequests";
 import AuthorPosts from "../pages/Dashboards/Authors/AuthorDashboard";
+import ViewPost from "../pages/Dashboards/Authors/ViewPost";
+import EditPost from "../pages/Dashboards/Authors/EditPost";
+import CreatePost from "../pages/Dashboards/Authors/CreatePost";
 
 
 
@@ -43,6 +46,9 @@ const routes = [
           {path :"requestrole", element: <RequireAuth allowedRoles={["guest","author","editor"]}><RequestRole></RequestRole></RequireAuth>},
           {path: "pending-request", element: <RequireAuth allowedRoles={["admin"]}><AdminRoleRequests></AdminRoleRequests></RequireAuth>},
           {path: "posts", element: <RequireAuth allowedRoles={["author"]}><AuthorPosts/></RequireAuth>},
+          {path: "posts/create", element: <RequireAuth allowedRoles={["author"]}><CreatePost/></RequireAuth>},
+          {path: "posts/:id", element: <RequireAuth allowedRoles={["author"]}><ViewPost/></RequireAuth>},
+          { path: "posts/:id/edit" , element:<RequireAuth allowedRoles={["author"]}><EditPost/></RequireAuth>},
 
         
         
