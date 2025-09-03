@@ -13,21 +13,34 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TableRow
+  TableRow,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 
 function AdminRoleRequests() {
   const [requests, setRequests] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // fetch all requests (not only pending)
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState("");
+
+  // fetch all requests
   const fetchRequests = async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get("/pending-requests"); // 👈 use endpoint that returns ALL
+      const res = await axios.get("/pending-requests"); 
       setRequests(res.data);
     } catch (err) {
       setError("Failed to load requests.");
@@ -35,18 +48,44 @@ function AdminRoleRequests() {
     setLoading(false);
   };
 
+  // fetch categories for editor assignment
+  const fetchCategories = async () => {
+    try {
+      const res = await axios.get("/categories");
+      setCategories(res.data);
+    } catch (err) {
+      console.error("Failed to fetch categories", err);
+    }
+  };
+
   useEffect(() => {
     fetchRequests();
+    fetchCategories();
   }, []);
 
-  // handle approve/reject
-  const handleDecision = async (id, action) => {
+  // open dialog if approving editor
+  const handleApprove = (req) => {
+    if (req.requested_role === "editor") {
+      setSelectedRequest(req);
+      setOpenDialog(true);
+    } else {
+      handleDecision(req.id, "approve");
+    }
+  };
+
+  // finalize decision
+  const handleDecision = async (id, action, category_id = null) => {
     try {
-      await axios.post(`/role-decision/${id}`, { action });
+      await axios.post(`/role-decision/${id}`, {
+        action,
+        ...(category_id ? { category_id } : {}),
+      });
 
       setRequests((prev) =>
         prev.map((req) =>
-          req.id === id ? { ...req, status: action === "approve" ? "approved" : "rejected" } : req
+          req.id === id
+            ? { ...req, status: action === "approve" ? "approved" : "rejected" }
+            : req
         )
       );
 
@@ -54,13 +93,15 @@ function AdminRoleRequests() {
     } catch (err) {
       setError("Failed to update request.");
     }
+    setOpenDialog(false);
+    setSelectedRequest(null);
+    setSelectedCategory("");
   };
 
-  // sort so pending requests are always shown first
   const sortedRequests = [...requests].sort((a, b) => {
     if (a.status === "pending" && b.status !== "pending") return -1;
     if (a.status !== "pending" && b.status === "pending") return 1;
-    return a.id - b.id; // fallback to ID order
+    return a.id - b.id;
   });
 
   return (
@@ -121,7 +162,7 @@ function AdminRoleRequests() {
                             variant="contained"
                             color="success"
                             size="small"
-                            onClick={() => handleDecision(req.id, "approve")}
+                            onClick={() => handleApprove(req)}
                           >
                             Approve
                           </Button>
@@ -143,9 +184,40 @@ function AdminRoleRequests() {
           </TableContainer>
         )}
       </Paper>
+
+      {/* Category dialog */}
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+        <DialogTitle>Assign Category for Editor</DialogTitle>
+        <DialogContent>
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>Select Category</InputLabel>
+            <Select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+            >
+              {categories.map((cat) => (
+                <MenuItem key={cat.id} value={cat.id}>
+                  {cat.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+          <Button
+            onClick={() =>
+              handleDecision(selectedRequest.id, "approve", selectedCategory)
+            }
+            disabled={!selectedCategory}
+            variant="contained"
+          >
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }
 
 export default AdminRoleRequests;
-

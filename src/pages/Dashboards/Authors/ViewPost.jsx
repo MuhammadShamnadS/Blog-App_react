@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "../../../api/axios";
 
-const BASE_URL = "http://localhost:8000"; // Laravel backend
+const BASE_URL = "http://localhost:8000";
 
 const ViewPost = () => {
   const { id } = useParams();
@@ -26,6 +26,7 @@ const ViewPost = () => {
     fetchPost();
   }, [id]);
 
+  // handle draft/submit
   const updateStatus = async (status) => {
     try {
       await axios.put(`/posts/${id}`, {
@@ -43,10 +44,23 @@ const ViewPost = () => {
     }
   };
 
+  // handle resubmit (separate controller endpoint)
+  const handleResubmit = async () => {
+    try {
+      await axios.post(`/posts/${id}/resubmit`);
+      alert("Post resubmitted successfully!");
+      const res = await axios.get(`/posts/${id}`);
+      setPost(res.data);
+    } catch {
+      alert("Failed to resubmit post.");
+    }
+  };
+
   if (loading) return <p>Loading...</p>;
   if (error) return <p style={{ color: "red" }}>{error}</p>;
 
   const isSubmitted = post.status === "submitted";
+  const isRejected = post.status === "editor_rejected";
 
   return (
     <div style={{ padding: "20px" }}>
@@ -74,12 +88,17 @@ const ViewPost = () => {
               style={{
                 padding: "4px 8px",
                 borderRadius: "4px",
-                background: isSubmitted ? "#4caf50" : "#ff9800",
+                background:
+                  post.status === "submitted"
+                    ? "#4caf50"
+                    : post.status === "editor_rejected"
+                    ? "#f44336"
+                    : "#ff9800",
                 color: "#fff",
                 fontSize: "12px",
               }}
             >
-              {isSubmitted ? "Submitted" : "Draft"}
+              {post.status}
             </span>
             <button
               onClick={() => navigate(`/dashboard/posts/${id}/edit`)}
@@ -98,6 +117,22 @@ const ViewPost = () => {
             </button>
           </div>
         </div>
+
+        {/* Show Editor Feedback if rejected */}
+        {isRejected && post.editor_review?.feedback && (
+          <div
+            style={{
+              background: "#ffe0e0",
+              border: "1px solid #ff4444",
+              padding: "10px",
+              borderRadius: "6px",
+              marginBottom: "15px",
+            }}
+          >
+            <strong>Editor Feedback:</strong>
+            <p>{post.editor_review.feedback}</p>
+          </div>
+        )}
 
         {/* Title */}
         <h2>{post.title}</h2>
@@ -131,7 +166,10 @@ const ViewPost = () => {
                   marginRight: "10px",
                   cursor: "pointer",
                 }}
-                onClick={() => !isSubmitted && setModalImage(`${BASE_URL}/storage/${m.url}`)}
+                onClick={() =>
+                  !isSubmitted &&
+                  setModalImage(`${BASE_URL}/storage/${m.url}`)
+                }
               />
             ))
           ) : (
@@ -141,6 +179,7 @@ const ViewPost = () => {
 
         {/* Footer actions */}
         <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
+          {/* Draft button */}
           <button
             onClick={() => updateStatus("draft")}
             disabled={isSubmitted}
@@ -156,22 +195,41 @@ const ViewPost = () => {
           >
             Save as Draft
           </button>
-          <button
-            onClick={() => updateStatus("submitted")}
-            disabled={isSubmitted}
-            style={{
-              flex: 1,
-              padding: "10px",
-              borderRadius: "6px",
-              border: "none",
-              cursor: isSubmitted ? "not-allowed" : "pointer",
-              background: "#1976d2",
-              color: "#fff",
-              opacity: isSubmitted ? 0.6 : 1,
-            }}
-          >
-            Submit
-          </button>
+
+          {/* Submit / Resubmit */}
+          {isRejected ? (
+            <button
+              onClick={handleResubmit}
+              style={{
+                flex: 1,
+                padding: "10px",
+                borderRadius: "6px",
+                border: "none",
+                cursor: "pointer",
+                background: "#1976d2",
+                color: "#fff",
+              }}
+            > 
+              Resubmit
+            </button>
+          ) : (
+            <button
+              onClick={() => updateStatus("submitted")}
+              disabled={isSubmitted}
+              style={{
+                flex: 1,
+                padding: "10px",
+                borderRadius: "6px",
+                border: "none",
+                cursor: isSubmitted ? "not-allowed" : "pointer",
+                background: "#1976d2",
+                color: "#fff",
+                opacity: isSubmitted ? 0.6 : 1,
+              }}
+            >
+              Submit
+            </button>
+          )}
         </div>
       </div>
 

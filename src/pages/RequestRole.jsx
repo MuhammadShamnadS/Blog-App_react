@@ -8,12 +8,12 @@ import {
   CircularProgress,
   Alert,
   Box,
+  InputLabel,
+  MenuItem,
+  FormControl,
+  Select,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import InputLabel from "@mui/material/InputLabel";
-import MenuItem from "@mui/material/MenuItem";
-import FormControl from "@mui/material/FormControl";
-import Select from "@mui/material/Select";
 
 function RequestRole() {
   const [role, setRole] = useState("");
@@ -21,14 +21,10 @@ function RequestRole() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [requestStatus, setRequestStatus] = useState(null);
-  const [requestedRole, setRequestedRole] = useState("");  
+  const [requestedRole, setRequestedRole] = useState("");
   const navigate = useNavigate();
 
-  //handle only role change in dropdown
-  const handleSelectChange = (event) => {
-    setRole(event.target.value);
-  };
-
+  // Fetch existing request status
   const statusfetch = async () => {
     try {
       const res = await axios.get("/requeststatus");
@@ -36,8 +32,8 @@ function RequestRole() {
       if (res.data.error) {
         setError(res.data.error);
       } else {
-        setRequestStatus(res.data.status);       
-        setRequestedRole(res.data.requested_role); 
+        setRequestStatus(res.data.status);
+        setRequestedRole(res.data.requested_role);
       }
     } catch (err) {
       if (err.response && err.response.data) {
@@ -51,9 +47,8 @@ function RequestRole() {
 
   useEffect(() => {
     statusfetch();
-  }, []); 
+  }, []);
 
-  //handle API submission
   const handleSubmit = async () => {
     setError("");
     setSuccess("");
@@ -65,14 +60,16 @@ function RequestRole() {
 
     setLoading(true);
     try {
-      const res = await axios.post("/role-request", { requested_role: role });
+      const payload = { requested_role: role };
+
+      const res = await axios.post("/role-request", payload);
 
       if (res.data.error) {
         setError(res.data.error);
       } else {
         setSuccess(res.data.message || "Role change requested successfully.");
-        setRequestStatus("pending");   
-        setRequestedRole(role);        
+        setRequestStatus("pending");
+        setRequestedRole(role);
       }
     } catch (err) {
       if (err.response && err.response.data) {
@@ -95,11 +92,15 @@ function RequestRole() {
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-        {/* Status banner */}
         {requestStatus && (
-          <Alert 
-            severity={requestStatus === "pending" ? "info" : 
-                      requestStatus === "approved" ? "success" : "warning"} 
+          <Alert
+            severity={
+              requestStatus === "pending"
+                ? "info"
+                : requestStatus === "approved"
+                ? "success"
+                : "warning"
+            }
             sx={{ mb: 2 }}
           >
             Your request for role <strong>{requestedRole}</strong> is currently{" "}
@@ -107,9 +108,17 @@ function RequestRole() {
           </Alert>
         )}
 
-        <FormControl fullWidth sx={{ mt: 2 }} disabled={requestStatus === "pending"}>
+        <FormControl
+          fullWidth
+          sx={{ mt: 2 }}
+          disabled={requestStatus === "pending"}
+        >
           <InputLabel>Select a Role</InputLabel>
-          <Select value={role} label="Role" onChange={handleSelectChange}>
+          <Select
+            value={role}
+            label="Role"
+            onChange={(e) => setRole(e.target.value)}
+          >
             <MenuItem value="author">Author</MenuItem>
             <MenuItem value="editor">Editor</MenuItem>
           </Select>
@@ -119,7 +128,7 @@ function RequestRole() {
           <Button
             variant="contained"
             fullWidth
-            disabled={loading || requestStatus === "pending"} // 🔹 disable if pending
+            disabled={loading || requestStatus === "pending"}
             onClick={handleSubmit}
           >
             Confirm

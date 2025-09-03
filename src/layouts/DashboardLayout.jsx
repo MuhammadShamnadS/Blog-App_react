@@ -34,7 +34,9 @@ const DashboardLayout = () => {
     
     admin: [
       { label: "Home", path: "/dashboard" },
-      {label: "Role Requests", path: "/dashboard/pending-request"}
+      {label: "Role Requests", path: "/dashboard/pending-request"},
+      {label: "Post", path: "/dashboard/admin/post"},
+      {label: "Approved Posts", path: "/dashboard/admin/approved-posts"},
     ],
     guest: [
       {label:"Home", path: "/dashboard"},
@@ -47,6 +49,7 @@ const DashboardLayout = () => {
     ],
     editor: [
       ...(user?.is_manual === 0 ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }] : []),
+      {label: "Posts",path: "/dashboard/editor/posts"},
     ],
   };
 

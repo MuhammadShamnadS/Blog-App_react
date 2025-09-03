@@ -129,7 +129,9 @@ function AuthorPosts() {
                         variant="outlined"
                         size="small"
                         onClick={() => handleEdit(post.id)}
-                        disabled={post.status === "submitted"}
+                        disabled={
+                          !["draft", "editor_rejected"].includes(post.status)
+                        }
                       >
                         Edit
                       </Button>

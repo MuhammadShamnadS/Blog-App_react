@@ -18,6 +18,11 @@ import AuthorPosts from "../pages/Dashboards/Authors/AuthorDashboard";
 import ViewPost from "../pages/Dashboards/Authors/ViewPost";
 import EditPost from "../pages/Dashboards/Authors/EditPost";
 import CreatePost from "../pages/Dashboards/Authors/CreatePost";
+import AdminPostAssignments from "../pages/Dashboards/Admin/AdminPostAssignments";
+import EditorPosts from "../pages/Dashboards/Editors/EditorPost";
+import EditorViewPost from "../pages/Dashboards/Editors/EditorViewPost";
+import AdminPosts from "../pages/Dashboards/Admin/AdminPosts";
+import AdminPostView from "../pages/Dashboards/Admin/AdminPostView";
 
 
 
@@ -49,6 +54,13 @@ const routes = [
           {path: "posts/create", element: <RequireAuth allowedRoles={["author"]}><CreatePost/></RequireAuth>},
           {path: "posts/:id", element: <RequireAuth allowedRoles={["author"]}><ViewPost/></RequireAuth>},
           { path: "posts/:id/edit" , element:<RequireAuth allowedRoles={["author"]}><EditPost/></RequireAuth>},
+          { path: "admin/post" , element:<RequireAuth allowedRoles={["admin"]}><AdminPostAssignments/></RequireAuth>},
+          {path: "editor/posts", element:<RequireAuth allowedRoles={["editor"]}><EditorPosts/></RequireAuth>},
+          {path:"editor/reviews/:reviewId", element:<RequireAuth allowedRoles={["editor"]}><EditorViewPost/></RequireAuth>},
+          {path:"admin/approved-posts", element:<RequireAuth allowedRoles={["admin"]}><AdminPosts/></RequireAuth>},
+          {path:"admin/posts/:postId", element:<RequireAuth allowedRoles={["admin"]}><AdminPostView/></RequireAuth>},
+          
+
 
         
         
