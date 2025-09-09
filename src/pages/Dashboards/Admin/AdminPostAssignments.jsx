@@ -3,8 +3,8 @@ import axios from "../../../api/axios";
 import {
   Container,
   Paper,
+  Snackbar,
   Typography,
-  Button,
   CircularProgress,
   Alert,
   Box,
@@ -14,29 +14,26 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
+  Tooltip,
 } from "@mui/material";
 
 function AdminPostAssignments() {
   const [posts, setPosts] = useState([]);
-  const [editors, setEditors] = useState([]);
+  const [editors, setEditors] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [success, setSuccess] = useState({});
+  const [assignedEditors, setAssignedEditors] = useState({});
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
-  const [openDialog, setOpenDialog] = useState(false);
-  const [selectedPost, setSelectedPost] = useState(null);
-  const [selectedEditor, setSelectedEditor] = useState("");
-  const [category, setCategory] = useState(null);
-
-  // fetch all submitted posts (including resubmitted ones)
   const fetchPosts = async () => {
     setLoading(true);
     setError("");
@@ -49,15 +46,17 @@ function AdminPostAssignments() {
     setLoading(false);
   };
 
-  // fetch editors for a given category
   const fetchEditors = async (categoryId) => {
+    if (editors[categoryId]) return;
     try {
       const res = await axios.get(`/categories/${categoryId}/editors`);
-      setCategory(res.data.category);
-      setEditors(res.data.editors || []);
+      setEditors((prev) => ({ ...prev, [categoryId]: res.data.editors || [] }));
     } catch (err) {
-      console.error("Failed to fetch editors", err);
-      setEditors([]);
+      setSnackbar({
+        open: true,
+        message: "Failed to load posts.",
+        severity: "error",
+      });
     }
   };
 
@@ -65,130 +64,234 @@ function AdminPostAssignments() {
     fetchPosts();
   }, []);
 
-  // open dialog for selecting editor
-  const handleAssign = (post) => {
-    setSelectedPost(post);
-    setSelectedEditor("");
-    fetchEditors(post.category_id);
-    setOpenDialog(true);
-  };
-
-  // finalize assignment
-  const handleConfirmAssign = async () => {
+  const handleAssignEditor = async (post, editorId) => {
     try {
-      await axios.post(`/admin/posts/${selectedPost.id}/assign-editor`, {
-        editor_id: selectedEditor,
+      await axios.post(`/admin/posts/${post.id}/assign-editor`, {
+        editor_id: editorId,
       });
 
-      // update local UI state
       setPosts((prev) =>
         prev.map((p) =>
-          p.id === selectedPost.id ? { ...p, status: "under_review" } : p
+          p.id === post.id ? { ...p, status: "under_review" } : p
         )
       );
 
-      setSuccess("Editor assigned successfully.");
+      setAssignedEditors((prev) => ({ ...prev, [post.id]: editorId }));
+
+      setSnackbar({
+        open: true,
+        message: "Editor assigned successfully.",
+        severity: "success",
+      });
     } catch (err) {
-      setError(
-        err.response?.data?.error || "Failed to assign editor. Try again."
-      );
-    } finally {
-      setOpenDialog(false);
-      setSelectedPost(null);
-      setSelectedEditor("");
+      setSnackbar({
+        open: true,
+        message:
+          err.response?.data?.error || "Failed to assign editor. Try again.",
+        severity: "error",
+      });
     }
   };
 
   return (
-    <Container maxWidth="md">
-      <Paper elevation={3} sx={{ p: 4, mt: 6 }}>
-        <Typography variant="h5" gutterBottom>
-          Assign Editors to Submitted Posts
-        </Typography>
-
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-
-        {loading ? (
-          <Box display="flex" justifyContent="center" my={3}>
-            <CircularProgress />
-          </Box>
-        ) : posts.length === 0 ? (
-          <Alert severity="info">No submitted posts available.</Alert>
-        ) : (
-          <TableContainer component={Paper} sx={{ mt: 2 }}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Post ID</TableCell>
-                  <TableCell>Title</TableCell>
-                  <TableCell>Author</TableCell>
-                  <TableCell>Category</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {posts.map((post) => (
-                  <TableRow key={post.id}>
-                    <TableCell>{post.id}</TableCell>
-                    <TableCell>{post.title}</TableCell>
-                    <TableCell>{post.author?.name}</TableCell>
-                    <TableCell>{post.category?.name}</TableCell>
-                    <TableCell>{post.status}</TableCell>
-                    <TableCell>
-                      {post.status === "submitted" && (
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          size="small"
-                          onClick={() => handleAssign(post)}
-                        >
-                          Assign Editor
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Paper>
-
-      {/* Assign Editor dialog */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-        <DialogTitle>Assign Editor</DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel>Select Editor</InputLabel>
-            <Select
-              value={selectedEditor}
-              onChange={(e) => setSelectedEditor(e.target.value)}
-            >
-              {editors.length === 0 ? (
-                <MenuItem disabled>No editors available</MenuItem>
-              ) : (
-                editors.map((editor) => (
-                  <MenuItem key={editor.id} value={editor.id}>
-                    {editor.user?.name} ({category?.name})
-                  </MenuItem>
-                ))
-              )}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button
-            onClick={handleConfirmAssign}
-            disabled={!selectedEditor}
-            variant="contained"
+    <Container maxWidth="lg">
+      <Box>
+        <Box
+          sx={{
+            bgcolor: "#2c2638",
+            borderRadius: 2,
+            py: 2,
+            mb: 2,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Typography
+            variant="h5"
+            sx={{ fontWeight: "bold", color: "white", textAlign: "center" }}
           >
-            Confirm
-          </Button>
-        </DialogActions>
-      </Dialog>
+            Assign Editors to Submitted Posts
+          </Typography>
+        </Box>
+
+        <Box sx={{ px: 2 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          {loading ? (
+            <Box display="flex" justifyContent="center" my={3}>
+              <CircularProgress />
+            </Box>
+          ) : posts.length === 0 ? (
+            <Alert severity="info">No submitted posts available.</Alert>
+          ) : (
+            <TableContainer component={Paper} elevation={2}>
+              <Table>
+                <TableHead sx={{ bgcolor: "#f5f5f5" }}>
+                  <TableRow>
+                    <TableCell>Post ID</TableCell>
+                    <TableCell>Title</TableCell>
+                    <TableCell>Author</TableCell>
+                    <TableCell>Category</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Assign Editor</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {posts.map((post) => (
+                    <TableRow key={post.id}>
+                      <TableCell>{post.id}</TableCell>
+
+                      {/* Title with ellipsis and tooltip */}
+                      <TableCell sx={{ maxWidth: 200 }}>
+                        <Tooltip title={post.title}>
+                          <Typography
+                            noWrap
+                            sx={{
+                              maxWidth: "200px",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {post.title}
+                          </Typography>
+                        </Tooltip>
+                      </TableCell>
+
+                      {/* Author Name */}
+                      <TableCell sx={{ maxWidth: 150 }}>
+                        <Tooltip title={post.author?.name || "Unknown"}>
+                          <Typography
+                            noWrap
+                            sx={{
+                              maxWidth: "150px",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {post.author?.name || "Unknown"}
+                          </Typography>
+                        </Tooltip>
+                      </TableCell>
+
+                      {/* Category Name */}
+                      <TableCell sx={{ maxWidth: 150 }}>
+                        <Tooltip title={post.category?.name || "N/A"}>
+                          <Typography
+                            noWrap
+                            sx={{
+                              maxWidth: "150px",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {post.category?.name || "N/A"}
+                          </Typography>
+                        </Tooltip>
+                      </TableCell>
+
+                      {/* Status */}
+                      <TableCell>
+                        <Typography
+                          sx={{
+                            fontWeight: "bold",
+                            color:
+                              post.status === "submitted"
+                                ? "black"
+                                : post.status === "under_review"
+                                ? "blue"
+                                : "red",
+                          }}
+                        >
+                          {post.status === "submitted"
+                            ? "Submitted"
+                            : post.status === "under_review"
+                            ? "Under Review"
+                            : post.status}
+                        </Typography>
+                      </TableCell>
+
+                      {/* Assign Editor */}
+                      <TableCell sx={{ maxWidth: 200 }}>
+                        {post.status === "submitted" ? (
+                          <FormControl fullWidth size="small">
+                            <InputLabel>Select Editor</InputLabel>
+                            <Select
+                              value={assignedEditors[post.id] || ""}
+                              onOpen={() => fetchEditors(post.category_id)}
+                              onChange={(e) =>
+                                handleAssignEditor(post, e.target.value)
+                              }
+                            >
+                              {editors[post.category_id]?.length === 0 ? (
+                                <MenuItem disabled>No editors</MenuItem>
+                              ) : (
+                                editors[post.category_id]?.map((editor) => (
+                                  <MenuItem key={editor.id} value={editor.id}>
+                                    {editor.user?.name}
+                                  </MenuItem>
+                                ))
+                              )}
+                            </Select>
+                          </FormControl>
+                        ) : (
+                          <Tooltip
+                            title={
+                              editors[post.category_id]?.find(
+                                (e) => e.id === assignedEditors[post.id]
+                              )?.user?.name || "Assigned"
+                            }
+                          >
+                            <Typography
+                              noWrap
+                              sx={{
+                                maxWidth: "200px",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {editors[post.category_id]?.find(
+                                (e) => e.id === assignedEditors[post.id]
+                              )?.user?.name || "Assigned"}
+                            </Typography>
+                          </Tooltip>
+                        )}
+                        {success[post.id] && (
+                          <Alert severity="success" sx={{ mt: 1 }}>
+                            {success[post.id]}
+                          </Alert>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Box>
+      </Box>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 }

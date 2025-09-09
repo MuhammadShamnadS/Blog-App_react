@@ -12,7 +12,6 @@ const DashboardRouter = () => {
   if (user?.role === "admin") return <AdminDashboard />;
   if(user?.role === "guest") return <GuestDashboard/>;
   if(user?.role === "author") return <aAuthorDashboard/>;
-  return <div>Unauthorized or unknown role</div>;
 };
 
 export default DashboardRouter;
