@@ -39,7 +39,7 @@ function AdminDashboardPage() {
         categories: categoriesRes.data.length,
       });
 
-      setLatestPosts(postsRes.data.slice(0, 5)); // Take top 5 posts
+      setLatestPosts(postsRes.data.slice(0, 5));
     } catch (error) {
       console.error("Error fetching stats or latest posts:", error);
     }
@@ -74,7 +74,10 @@ function AdminDashboardPage() {
   ];
 
   return (
-    <Box>
+    <Box
+    sx={{
+      m:2
+    }}>
       <Typography
         sx={{ fontWeight: "bold", mb: 3, fontSize: { xs: 30, md: 40 } }}
       >
@@ -83,6 +86,7 @@ function AdminDashboardPage() {
 
       <Box
         sx={{
+          m:2,
           display: "flex",
           flexDirection: { xs: "column", md: "row" },
           gap: 4,

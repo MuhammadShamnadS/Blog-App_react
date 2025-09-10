@@ -1,19 +1,17 @@
 import React, { useContext, useState, useEffect } from "react";
 import {
   Box,
-  List,
-  ListItem,
-  ListItemText,
-  Toolbar,
-  AppBar,
   Typography,
   CssBaseline,
-  ListItemButton,
   IconButton,
+  Button,
   useTheme,
   useMediaQuery,
   Drawer,
-  Divider,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useNavigate, Outlet } from "react-router-dom";
@@ -21,6 +19,7 @@ import LogoutButton from "../components/LogoutButton";
 import { AuthContext } from "../context/AuthContext";
 
 const drawerWidth = 220;
+const headerHeight = 55; // Header height
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
@@ -72,18 +71,11 @@ const DashboardLayout = () => {
   };
 
   const drawerContent = (
-    <Box
-      sx={{
-        bgcolor: "#2c2638",
-        p: 2,
-        height: "100%",
-        borderRadius: { xs: 0, md: 6 },
-      }}
-    >
+    <Box sx={{ bgcolor: "#2c2638", p: 2, height: "100%" }}>
       <Typography
         variant="h6"
         color="white"
-        sx={{ mb: 2, textAlign: "center" }}
+        sx={{ mb: 2, textAlign: "center", fontFamily: "'Righteous', cursive" }}
       >
         Navigation
       </Typography>
@@ -93,12 +85,11 @@ const DashboardLayout = () => {
             <ListItemButton
               onClick={() => {
                 navigate(item.path);
-                if (isMobile) setMobileOpen(false);
+                setMobileOpen(false);
               }}
               sx={{
-                borderRadius: 3,
+                borderRadius: 1,
                 color: "white",
-                bgcolor: "transparent",
                 "&:hover": { bgcolor: "#3c3455" },
               }}
             >
@@ -115,98 +106,84 @@ const DashboardLayout = () => {
       <CssBaseline />
 
       {/* Header */}
-      <AppBar position="fixed" sx={{ bgcolor: "#2c2638" }}>
-        <Toolbar
-          sx={{ display: "flex", justifyContent: "space-between", px: 3 }}
-        >
-          {isMobile && (
-            <IconButton color="inherit" onClick={handleDrawerToggle}>
-              <MenuIcon />
-            </IconButton>
-          )}
-
+      <Box
+        position="fixed"
+        sx={{ bgcolor: "#2c2638", width: "100vw", height: headerHeight, p: 1, zIndex: 1200 }}
+      >
+        <Box sx={{ display: "flex", justifyContent: "space-between", px: 2 }}>
           <Typography
             color="white"
-            sx={{
-              marginLeft: { xs: 0, md: 65 },
-              fontSize: { xs: 15, md: 20 },
-            }}
+            variant="h5"
+            sx={{ fontFamily: "'Edu NSW ACT Hand Pre', cursive", fontWeight: "400" }}
           >
             Blog Management System
           </Typography>
 
-          <LogoutButton />
-        </Toolbar>
-      </AppBar>
-      <Box sx={{ display: "flex", flexDirection: "row" }}>
-        {/* Sidebar */}
-        {isMobile ? (
-          <Drawer
-            variant="temporary"
-            open={mobileOpen}
-            onClose={handleDrawerToggle}
-            ModalProps={{ keepMounted: true }}
-            sx={{
-              "& .MuiDrawer-paper": {
-                boxSizing: "border-box",
-                width: drawerWidth,
-              },
-            }}
-          >
-            {drawerContent}
-          </Drawer>
-        ) : (
-          <Box
-            sx={{
-              width: drawerWidth,
-              bgcolor: "#ffffffff",
-              borderRadius: 2,
-              // p: 2,
-              ml: 2,
-              mt: 10,
-              height: "100vh",
-            }}
-          >
-            {drawerContent}
-          </Box>
-        )}
+          {isMobile ? (
+            <IconButton color="inherit" onClick={handleDrawerToggle}>
+              <MenuIcon />
+            </IconButton>
+          ) : (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              {links.map((item) => (
+                <Button
+                  key={item.label}
+                  color="inherit"
+                  onClick={() => navigate(item.path)}
+                  sx={{
+                    textTransform: "none",
+                    fontFamily: "'Righteous', cursive",
+                    color: "white",
+                  }}
+                >
+                  {item.label}
+                </Button>
+              ))}
 
-        {!isMobile && (
-          <Divider
-            orientation="vertical"
-            flexItem
-            sx={{
-              marginTop: "80px",
-              borderColor: "black",
-              width: "10px",
-            }}
-          />
-        )}
-
-        {/* Main content */}
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            p: 3,
-            mx: 2,
-            bgcolor: "#ffffffff",
-            borderRadius: 3,
-            boxShadow: 2,
-            minHeight: "70vh",
-            maxWidth: "100vw",
-            alignSelf: "center",
-          }}
-        >
-          <Outlet />
+              <LogoutButton />
+            </Box>
+          )}
         </Box>
+      </Box>
+
+      {/* Sidebar Drawer (Mobile) */}
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          display: { xs: "block", md: "none" },
+          "& .MuiDrawer-paper": {
+            width: drawerWidth,
+            bgcolor: "#2c2638",
+            color: "white",
+          },
+        }}
+      >
+        {drawerContent}
+      </Drawer>
+
+      {/* Main Content */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          mt: `${headerHeight + 16}px`, // add space for fixed header
+          bgcolor: "#f9f9f9",
+          minHeight: "70vh",
+          maxWidth: "100vw",
+        }}
+      >
+        <Outlet />
       </Box>
 
       {/* Footer */}
       <Box
         component="footer"
         sx={{
-          mt: 2,
+          mt: "auto",
           bgcolor: "#2c2638",
           color: "white",
           textAlign: "center",
@@ -214,7 +191,7 @@ const DashboardLayout = () => {
           p: 2,
         }}
       >
-        <Typography variant="body2">
+        <Typography variant="body2" sx={{ fontFamily: "'Righteous', cursive" }}>
           © {new Date().getFullYear()} Blog Management System
         </Typography>
       </Box>

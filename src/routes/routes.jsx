@@ -23,6 +23,7 @@ import EditorPosts from "../pages/Dashboards/Editors/EditorPost";
 import EditorViewPost from "../pages/Dashboards/Editors/EditorViewPost";
 import AdminPosts from "../pages/Dashboards/Admin/AdminPosts";
 import AdminPostView from "../pages/Dashboards/Admin/AdminPostView";
+import GuestPostView from "../pages/Dashboards/Guest/GuestPostView";
 
 
 
@@ -52,13 +53,14 @@ const routes = [
           {path: "pending-request", element: <RequireAuth allowedRoles={["admin"]}><AdminRoleRequests></AdminRoleRequests></RequireAuth>},
           {path: "posts", element: <RequireAuth allowedRoles={["author"]}><AuthorPosts/></RequireAuth>},
           {path: "posts/create", element: <RequireAuth allowedRoles={["author"]}><CreatePost/></RequireAuth>},
-          {path: "posts/:id", element: <RequireAuth allowedRoles={["author"]}><ViewPost/></RequireAuth>},
+          {path: "posts/:id", element: <RequireAuth allowedRoles={["author",]}><ViewPost/></RequireAuth>},
           { path: "posts/:id/edit" , element:<RequireAuth allowedRoles={["author"]}><EditPost/></RequireAuth>},
           { path: "admin/post" , element:<RequireAuth allowedRoles={["admin"]}><AdminPostAssignments/></RequireAuth>},
           {path: "editor/posts", element:<RequireAuth allowedRoles={["editor"]}><EditorPosts/></RequireAuth>},
           {path:"editor/reviews/:reviewId", element:<RequireAuth allowedRoles={["editor"]}><EditorViewPost/></RequireAuth>},
           {path:"admin/approved-posts", element:<RequireAuth allowedRoles={["admin"]}><AdminPosts/></RequireAuth>},
           {path:"admin/posts/:postId", element:<RequireAuth allowedRoles={["admin"]}><AdminPostView/></RequireAuth>},
+          {path:"guest/post/:id",element:<RequireAuth allowedRoles={["guest"]}><GuestPostView/></RequireAuth>},
           
 
 
