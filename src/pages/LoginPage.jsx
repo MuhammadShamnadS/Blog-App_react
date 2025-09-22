@@ -1,4 +1,5 @@
 import React, { useState, useContext } from "react";
+import authService from "../services/authService";
 import {
   Box,
   AppBar,
@@ -14,11 +15,11 @@ import {
 import { useForm } from "react-hook-form";
 import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import API from "../api/axios";
 import GoogleIcon from "@mui/icons-material/Google";
 import LoginIcon from "@mui/icons-material/Login";
 
 const LoginPage = () => {
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const { login } = useContext(AuthContext);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
 
@@ -34,44 +35,46 @@ const LoginPage = () => {
   const [isRegister, setIsRegister] = useState(false);
 
   const onSubmit = async (data) => {
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      if (isRegister) {
-        clearErrors();
-        await API.post("/register", data);
-        alert("Registration successful! Please login.");
-        setIsRegister(false);
-      } else {
-        await login(data.username, data.password);
-      }
-    } catch (err) {
-      if (err.response && err.response.data) {
-        const apiErrors = err.response.data;
-
-        if (apiErrors.error) {
-          setError("root", {
-            type: "server",
-            message: apiErrors.error,
-          });
-        } else {
-          Object.keys(apiErrors).forEach((field) => {
-            setError(field, {
-              type: "server",
-              message: apiErrors[field][0],
-            });
-          });
-        }
-      } else {
-        setError("root", {
-          type: "server",
-          message: "Server error, please try again",
-        });
-      }
-    } finally {
-      setLoading(false);
+  try {
+    if (isRegister) {
+      clearErrors();
+      await authService.registerUser(data);
+      alert("Registration successful! Please login.");
+      setIsRegister(false);
+    } else {
+      await login(data.username, data.password);
     }
-  };
+  } catch (err) {
+  if (err.response && err.response.data) {
+    const apiErrors = err.response.data;
+
+    if (apiErrors.error) {
+      setError("root", {
+        type: "server",
+        message: apiErrors.error,
+      });
+    } else if (apiErrors.errors) {
+      // Handle validation field errors
+      Object.keys(apiErrors.errors).forEach((field) => {
+        setError(field, {
+          type: "server",
+          message: apiErrors.errors[field][0],
+        });
+      });
+    }
+  } else {
+    setError("root", {
+      type: "server",
+      message: "Server error, please try again",
+    });
+  }
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const toggleForm = () => {
     setIsRegister(!isRegister);
@@ -385,8 +388,8 @@ const LoginPage = () => {
               fullWidth
               variant="contained"
               onClick={() =>
-                (window.location.href =
-                  "http://localhost:8000/api/auth/google/redirect")
+                (
+                  authService.loginWithGoogle())
               }
               sx={{
                 borderRadius: "50px",

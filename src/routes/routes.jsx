@@ -1,30 +1,36 @@
-import React from "react";
-import { Navigate } from "react-router-dom";
-
-import PublicLayout from "../layouts/PublicLayout";
-import ProtectedLayout from "../layouts/ProtectedLayout";
+import React, { Suspense, lazy } from "react";
+import { Outlet } from "react-router-dom";
+import { withAuth } from "../helpers/withAuth";
+import PublicLayout from "./Guards/PublicRoute";
+import ProtectedLayout from "./Guards/ProtectedRoute";
 import DashboardLayout from "../layouts/DashboardLayout";
 import LoginPage from "../pages/LoginPage";
 import DashboardRouter from "../pages/Dashboards/DashboardRouter";
-import Dashboard from "../pages/Dashboards/Admin/AdminDashboard";
-import RequireAuth from "../components/RequireAuth";
+import RequireAuth from "./Guards/RequireAuth";
 import GoogleSuccess from "../pages/GoogleSuccessPage";
-import GuestDashboard from "../pages/Dashboards/Guest/GuestDashboard";
-import ForgotPasswordPage from "../pages/Password-restpage";
+import PasswordResetPage from "../pages/PasswordResetPage";
 import PasswordChange from "../pages/PasswordChange";
-import RequestRole from "../pages/RequestRole";
-import AdminRoleRequests from "../pages/Dashboards/Admin/AdminRoleRequests";
-import AuthorPosts from "../pages/Dashboards/Authors/AuthorDashboard";
-import ViewPost from "../pages/Dashboards/Authors/ViewPost";
-import EditPost from "../pages/Dashboards/Authors/EditPost";
-import CreatePost from "../pages/Dashboards/Authors/CreatePost";
-import AdminPostAssignments from "../pages/Dashboards/Admin/AdminPostAssignments";
-import EditorPosts from "../pages/Dashboards/Editors/EditorPost";
-import EditorViewPost from "../pages/Dashboards/Editors/EditorViewPost";
-import AdminPosts from "../pages/Dashboards/Admin/AdminPosts";
-import AdminPostView from "../pages/Dashboards/Admin/AdminPostView";
-import GuestPostView from "../pages/Dashboards/Guest/GuestPostView";
-
+import Loadable from "../components/Loadable";
+import RoleRequestHistory from "../pages/Dashboards/Admin/AdminViewRoleRequestHistory";
+const Dashboard = lazy(() => import("../pages/Dashboards/Admin/AdminDashboard"));
+const GuestDashboard = lazy(() => import ("../pages/Dashboards/Guest/GuestDashboard"));
+const RequestRole = lazy(() => import ( "../pages/RequestRole"));
+const AdminRoleRequests = lazy(() => import("../pages/Dashboards/Admin/AdminRoleRequests"));
+const AdminPostAssignments = lazy(() => import("../pages/Dashboards/Admin/AdminPostAssignments"));
+const AdminPosts = lazy(() => import("../pages/Dashboards/Admin/AdminPosts"));
+const AdminPostView = lazy(() => import("../pages/Dashboards/Admin/AdminPostView"));
+const CategoryUpdate = lazy(() => import("../pages/Dashboards/Admin/CategoryUpdate"));
+const TagList = lazy(() => import("../pages/Dashboards/Admin/TagList"));
+const NotFound = lazy(() => import("../pages/NotFoundPage"));
+const AuthorPosts = lazy(() => import("../pages/Dashboards/Authors/AuthorDashboard"));
+const ViewPost = lazy(() => import("../pages/Dashboards/Authors/ViewPost"));
+const EditPost = lazy(() => import("../pages/Dashboards/Authors/EditPost"));
+const CreatePost = lazy(() => import("../pages/Dashboards/Authors/CreatePost"));
+const EditorPosts = lazy(() => import("../pages/Dashboards/Editors/EditorPost"));
+const EditorViewPost = lazy(() => import("../pages/Dashboards/Editors/EditorViewPost"));
+const GuestPostView = lazy(() => import("../pages/Dashboards/Guest/GuestPostView"));
+const GuestAuthorCards = lazy(() => import("../pages/Dashboards/Guest/AuthorList"));
+const AuthorProfile = lazy(() => import("../pages/Dashboards/Guest/AuthorProfile"));
 
 
 const routes = [
@@ -33,9 +39,8 @@ const routes = [
     children: [
       { path: "/", element: <LoginPage /> },
       { path: "/login", element: <LoginPage /> },
-      {path: "/google-success", element: <GoogleSuccess/>},
-      {path: "/password-reset",element:<ForgotPasswordPage/>},
-
+      { path: "/google-success", element: <GoogleSuccess /> },
+      { path: "/password-reset", element: <PasswordResetPage /> },
     ],
   },
   {
@@ -46,32 +51,62 @@ const routes = [
         element: <DashboardLayout />,
         children: [
           { index: true, element: <DashboardRouter /> },
-          { path: "Home", element: <RequireAuth allowedRoles={["admin"]}><Dashboard /></RequireAuth> },
-          { path: "Passwordchange", element: <RequireAuth allowedRoles={["editor","guest","author"]}><PasswordChange/></RequireAuth>},
-          {path: "Home", element: <RequireAuth allowedRoles={["guest"]}><GuestDashboard/></RequireAuth>},
-          {path :"requestrole", element: <RequireAuth allowedRoles={["guest","author","editor"]}><RequestRole></RequestRole></RequireAuth>},
-          {path: "pending-request", element: <RequireAuth allowedRoles={["admin"]}><AdminRoleRequests></AdminRoleRequests></RequireAuth>},
-          {path: "posts", element: <RequireAuth allowedRoles={["author"]}><AuthorPosts/></RequireAuth>},
-          {path: "posts/create", element: <RequireAuth allowedRoles={["author"]}><CreatePost/></RequireAuth>},
-          {path: "posts/:id", element: <RequireAuth allowedRoles={["author",]}><ViewPost/></RequireAuth>},
-          { path: "posts/:id/edit" , element:<RequireAuth allowedRoles={["author"]}><EditPost/></RequireAuth>},
-          { path: "admin/post" , element:<RequireAuth allowedRoles={["admin"]}><AdminPostAssignments/></RequireAuth>},
-          {path: "editor/posts", element:<RequireAuth allowedRoles={["editor"]}><EditorPosts/></RequireAuth>},
-          {path:"editor/reviews/:reviewId", element:<RequireAuth allowedRoles={["editor"]}><EditorViewPost/></RequireAuth>},
-          {path:"admin/approved-posts", element:<RequireAuth allowedRoles={["admin"]}><AdminPosts/></RequireAuth>},
-          {path:"admin/posts/:postId", element:<RequireAuth allowedRoles={["admin"]}><AdminPostView/></RequireAuth>},
-          {path:"guest/post/:id",element:<RequireAuth allowedRoles={["guest"]}><GuestPostView/></RequireAuth>},
-          
 
+          {
+            path: "admin",
+            element: withAuth(["admin"]),
+            children: [
+              { path: "home", element: <Loadable><Dashboard /></Loadable> },
+              { path: "post", element: <Loadable><AdminPostAssignments /></Loadable> },
+              { path: "category", element: <Loadable><CategoryUpdate /></Loadable> },
+              { path: "posts", element: <Loadable><AdminPosts /></Loadable> },
+              { path: "posts/:postId", element: <Loadable><AdminPostView /></Loadable> },
+              { path: "categories/:id/tags", element: <Loadable><TagList /></Loadable> },
+              { path: "pending-request", element: <Loadable><AdminRoleRequests /></Loadable> },
+              { path: "role-request-history", element: <Loadable><RoleRequestHistory /></Loadable> },
+            ],
+          },
 
-        
-        
-        
+          {
+            path: "guest",
+            element: withAuth(["guest"]),
+            children: [
+              { path: "home", element: <Loadable><GuestDashboard /></Loadable> },
+              { path: "request-role", element: <RequestRole /> },
+              { path: "post/:id", element: <Loadable><GuestPostView /></Loadable> },
+              { path: "authors", element: <Loadable><GuestAuthorCards /></Loadable> },
+              { path: "author/:id/profile", element: <Loadable><AuthorProfile /></Loadable> },
+            ],
+          },
+
+          {
+            path: "author",
+            element: withAuth(["author"]),
+            children: [
+              { path: "posts", element: <Loadable><AuthorPosts /></Loadable> },
+              { path: "posts/create", element: <Loadable><CreatePost /></Loadable> },
+              { path: "posts/:id/edit", element: <Loadable><EditPost /></Loadable> },
+              { path: "posts/:id", element: <Loadable><ViewPost /></Loadable> },
+            ],
+          },
+
+          {
+            path: "editor",
+            element: withAuth(["editor"]),
+            children: [
+              { path: "posts", element: <Loadable><EditorPosts /></Loadable> },
+              { path: "reviews/:reviewId", element: <Loadable><EditorViewPost /></Loadable> },
+            ],
+          },
+
+          { path: "password-change", element: <RequireAuth allowedRoles={["editor", "guest", "author"]}><PasswordChange /></RequireAuth> },
+          { path: "*", element: <Loadable><NotFound /></Loadable> },
         ],
       },
     ],
   },
-  { path: "*", element: <Navigate to="/" /> },
+
+  { path: "*", element: <Loadable><NotFound /></Loadable> },
 ];
 
 export default routes;

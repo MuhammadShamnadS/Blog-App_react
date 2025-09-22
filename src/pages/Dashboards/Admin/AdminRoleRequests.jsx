@@ -6,7 +6,6 @@ import {
   Typography,
   Button,
   CircularProgress,
-  Alert,
   Box,
   Table,
   TableBody,
@@ -24,6 +23,11 @@ import {
   MenuItem,
   Tooltip,
 } from "@mui/material";
+import ErrorCard from "../../../components/ErrorCard";
+import SuccessCard from "../../../components/SucessCard";
+import authService from "../../../services/authService";
+import { useNavigate } from "react-router-dom";
+import EmptyState from "../../../components/EmptyState";
 
 function AdminRoleRequests() {
   const [requests, setRequests] = useState([]);
@@ -31,7 +35,7 @@ function AdminRoleRequests() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
+  const navigate = useNavigate();
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -40,7 +44,7 @@ function AdminRoleRequests() {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get("/pending-requests"); 
+      const res = await authService.roleRequestsAdmin();
       setRequests(res.data);
     } catch (err) {
       setError("Failed to load requests.");
@@ -50,7 +54,7 @@ function AdminRoleRequests() {
 
   const fetchCategories = async () => {
     try {
-      const res = await axios.get("/categories");
+      const res = await authService.getCategories();
       setCategories(res.data);
     } catch (err) {
       console.error("Failed to fetch categories", err);
@@ -73,10 +77,7 @@ function AdminRoleRequests() {
 
   const handleDecision = async (id, action, category_id = null) => {
     try {
-      await axios.post(`/role-decision/${id}`, {
-        action,
-        ...(category_id ? { category_id } : {}),
-      });
+      await authService.roleDecisionAdmin(id, action, category_id);
 
       setRequests((prev) =>
         prev.map((req) =>
@@ -87,78 +88,107 @@ function AdminRoleRequests() {
       );
 
       setSuccess(`Request ${action}d successfully.`);
+      setError("");
     } catch (err) {
       setError("Failed to update request.");
+      setSuccess("");
     }
+
     setOpenDialog(false);
     setSelectedRequest(null);
     setSelectedCategory("");
   };
 
-  const sortedRequests = [...requests].sort((a, b) => {
-    if (a.status === "pending" && b.status !== "pending") return -1;
-    if (a.status !== "pending" && b.status === "pending") return 1;
-    return a.id - b.id;
-  });
-
   return (
-        <Container maxWidth="lg">
-          <Box>
-            <Box
-              sx={{
-                bgcolor: "#2c2638",
-                borderRadius: 2,
-                py: 2,
-                mb: 2,
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Typography
-                variant="h5"
-                sx={{ fontWeight: "bold", color: "white", textAlign: "center" }}
-              >
-                Role Requests
-              </Typography>
-            </Box>
-   
+    <Container maxWidth="lg">
+      <Box>
+        <Box
+          sx={{
+            bgcolor: "#2c2638",
+            borderRadius: 2,
+            py: 2,
+            mb: 2,
+            display: "flex",
+            justifyContent: "space-between",
+            px:5,
+            alignItems: "center",
+          }}
+        >
+          <Typography
+            sx={{ fontWeight: "bold", color: "white", textAlign: "center" , fontSize:{xs:15,md:20}, ml:{xs:0,sm:25,lg:60,md:40}}}
+          >
+            Role Requests
+          </Typography>
+          <Button sx={{
+            fontSize:{xs:10,md:15}
+          }}
+            onClick={() => navigate(`/dashboard/admin/role-request-history`)}
+          >
+            View History
+          </Button>
+        </Box>
 
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+        {error && <ErrorCard message={error} />}
+        {success && <SuccessCard message={success} />}
 
         {loading ? (
           <Box display="flex" justifyContent="center">
             <CircularProgress />
           </Box>
         ) : requests.length === 0 ? (
-          <Alert severity="info">No requests found.</Alert>
+          <>
+          <ErrorCard message="No requests found." />
+           <EmptyState message="No requests found." />
+          </>
         ) : (
           <TableContainer component={Paper} sx={{ mt: 2 }}>
             <Box sx={{ overflowX: "auto" }}>
               <Table sx={{ minWidth: 650 }}>
                 <TableHead>
                   <TableRow>
-                    {["User ID", "Name", "Current Role", "Requested Role", "Status", "Actions"].map((header) => (
-                      <TableCell key={header} sx={{ whiteSpace: "nowrap", fontWeight: "bold" }}>
+                    {[
+                      "User ID",
+                      "Name",
+                      "Current Role",
+                      "Requested Role",
+                      "Status",
+                      "Actions",
+                    ].map((header) => (
+                      <TableCell
+                        key={header}
+                        sx={{ whiteSpace: "nowrap", fontWeight: "bold" }}
+                      >
                         {header}
                       </TableCell>
                     ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {sortedRequests.map((req) => (
+                  {requests.map((req) => (
                     <TableRow key={req.id}>
-                      <TableCell sx={{ whiteSpace: "nowrap" }}>{req.user_id}</TableCell>
+                      <TableCell sx={{ whiteSpace: "nowrap" }}>
+                        {req.user_id}
+                      </TableCell>
 
-                      <TableCell sx={{ maxWidth: 200, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <TableCell
+                        sx={{
+                          maxWidth: 200,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
                         <Tooltip title={req.user?.name || ""}>
                           <span>{req.user?.name}</span>
                         </Tooltip>
                       </TableCell>
 
-                      <TableCell sx={{ whiteSpace: "nowrap" }}>{req.user?.role}</TableCell>
-                      <TableCell sx={{ whiteSpace: "nowrap" }}>{req.requested_role}</TableCell>
+                      <TableCell sx={{ whiteSpace: "nowrap" }}>
+                        {req.user?.role}
+                      </TableCell>
+                      <TableCell sx={{ whiteSpace: "nowrap" }}>
+                        {req.requested_role}
+                      </TableCell>
 
                       <TableCell sx={{ whiteSpace: "nowrap" }}>
                         <Typography
@@ -205,9 +235,7 @@ function AdminRoleRequests() {
             </Box>
           </TableContainer>
         )}
-    </Box>
-      
-       
+      </Box>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
         <DialogTitle>Assign Category for Editor</DialogTitle>

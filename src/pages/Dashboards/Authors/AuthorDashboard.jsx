@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import authService from "../../../services/authService";
 
 function AuthorPosts() {
   const [posts, setPosts] = useState([]);
@@ -30,7 +31,7 @@ function AuthorPosts() {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get("/posts");
+      const res = await authService.fetchPostsByAuthors();
       setPosts(res.data);
     } catch (err) {
       setError("Failed to load posts.");
@@ -44,19 +45,19 @@ function AuthorPosts() {
 
   // create new post
   const handleCreate = () => {
-    navigate("/dashboard/posts/create");
+    navigate("/dashboard/author/posts/create");
   };
 
   // edit post
   const handleEdit = (id) => {
-    navigate(`/dashboard/posts/${id}/edit`);
+    navigate(`/dashboard/author/posts/${id}/edit`);
   };
 
   // delete post
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this post?")) return;
     try {
-      await axios.delete(`/posts/${id}`);
+      await authService.deletePostByAuthors(id);
       setSuccess("Post deleted successfully!");
       fetchPosts();
     } catch (err) {
@@ -120,7 +121,7 @@ function AuthorPosts() {
                         variant="outlined"
                         size="small"
                         onClick={() =>
-                          navigate(`/dashboard/posts/${post.id}`)
+                          navigate(`/dashboard/author/posts/${post.id}`)
                         }
                       >
                         View

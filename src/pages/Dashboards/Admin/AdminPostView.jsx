@@ -1,18 +1,35 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "../../../api/axios";
+
 import {
   Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
   Typography,
   Button,
   CircularProgress,
   Paper,
   Divider,
+  Stack,
   Grid,
 } from "@mui/material";
 import { Snackbar, Alert } from "@mui/material";
+import authService from "../../../services/authService";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 
-const BASE_URL = "http://localhost:8000";
+import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
+
+import CommentIcon from "@mui/icons-material/Comment";
+import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
+import PersonIcon from "@mui/icons-material/Person";
+import DeleteIcon from "@mui/icons-material/Delete";
+
+
+const STORAGE_URL = import.meta.env.VITE_STORAGE_URL;
 
 const AdminViewPost = () => {
   const { postId } = useParams();
@@ -24,11 +41,21 @@ const AdminViewPost = () => {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [comments, setComments] = useState([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [commentsVisible, setCommentsVisible] = useState(false);
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const currentTab = queryParams.get("tab") || 0;
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const openScheduleDialog = () => setScheduleDialogOpen(true);
+  const closeScheduleDialog = () => setScheduleDialogOpen(false);
 
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const res = await axios.get(`/admin/posts/${postId}`);
+        const res = await authService.getPostViewAdmin(postId);
         setPost(res.data);
       } catch {
         setError("Failed to load post.");
@@ -48,7 +75,6 @@ const AdminViewPost = () => {
         {error}
       </Typography>
     );
-
   if (!post)
     return (
       <Typography sx={{ textAlign: "center", mt: 5 }}>
@@ -62,8 +88,11 @@ const AdminViewPost = () => {
     try {
       setSubmitting(true);
       setErrorMsg("");
-      const res = await axios.post(`/posts/${post.id}/publish`);
-      setPost(res.data.post || post);
+      const res = await authService.publishPostAdmin(post.id);
+      setPost((prev) => ({
+        ...prev,
+        ...(res.data.post || {}),
+      }));
       setSuccessMsg(res.data.message || "Post published successfully!");
     } catch (err) {
       console.error(err);
@@ -76,14 +105,40 @@ const AdminViewPost = () => {
     }
   };
 
+  const handleFeature = async () => {
+    if (!post || !post.id) return;
+    try {
+      setSubmitting(true);
+      setErrorMsg("");
+      const res = await authService.toggleFeaturePostAdmin(post.id, {
+        featured: post.featured ? 0 : 1,
+      });
+      setPost((prev) => ({
+        ...prev,
+        ...(res.data.post || {}),
+      }));
+      setSuccessMsg(res.data.message || "Feature status updated!");
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(
+        err.response?.data?.message || "Failed to update feature status."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleArchive = async () => {
     if (!post || !post.id) return;
 
     try {
       setSubmitting(true);
       setErrorMsg("");
-      const res = await axios.post(`/posts/${post.id}/archive`);
-      setPost(res.data.post || post);
+      const res = await authService.archievePostAdmin(post.id);
+      setPost((prev) => ({
+        ...prev,
+        ...(res.data.post || {}),
+      }));
       setSuccessMsg(res.data.message || "Post archived successfully!");
     } catch (err) {
       console.error(err);
@@ -100,9 +155,9 @@ const AdminViewPost = () => {
     try {
       setSubmitting(true);
       setErrorMsg("");
-      const res = await axios.delete(`/posts/${post.id}`);
+      const res = await authService.deletePostAdmin(post.id);
       setSuccessMsg(res.data.message || "Post deleted successfully!");
-      navigate("/dashboard/admin/posts");
+      navigate(`/dashboard/admin/posts?tab=${currentTab}`);
     } catch (err) {
       console.error(err);
       setErrorMsg(err.response?.data?.message || "Failed to delete post.");
@@ -111,6 +166,97 @@ const AdminViewPost = () => {
     }
   };
 
+const fetchComments = async () => {
+  if (post.status !== "published" && post.status !== "archived") return;
+  setLoadingComments(true);
+  try {
+    const res = await authService.getCommentsAdim(post.id);
+setComments(res.data || []);
+
+  } catch (err) {
+    console.error(err);
+    setError("Failed to load comments.");
+  } finally {
+    setLoadingComments(false);
+  }
+};
+
+  const handleDeleteComment = async (commentId) => {
+    try {
+      await authService.deleteComment(commentId);
+      fetchComments();
+    } catch (err) {
+      console.error(err);
+      setError("Failed to delete comment.");
+    }
+  };
+
+  const handleSchedule = async () => {
+    if (!post || !post.id || !scheduleDate) return;
+
+    try {
+      setSubmitting(true);
+      setErrorMsg("");
+      const res = await authService.schedulePostAdmin(post.id, scheduleDate);
+
+      setPost((prev) => ({
+        ...prev,
+        ...(res.data.post || {}),
+      }));
+      setSuccessMsg(res.data.message || "Post scheduled successfully!");
+      closeScheduleDialog();
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(err.response?.data?.message || "Failed to schedule post.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  const renderComments = (commentList) => {
+  return commentList.map((c) => (
+    <Paper key={c.id} elevation={1} sx={{ p: 2, mb: 2 }}>
+      {/* Comment Header */}
+      <Box display="flex" alignItems="center" gap={1} mb={1}>
+        <PersonIcon fontSize="large" sx={{ color: "#1976d2" }} />
+        <Box>
+          <Typography variant="subtitle1" fontWeight={600}>
+            {c.user?.name || "Unknown"}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {new Date(c.created_at).toLocaleString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+              hour: "numeric",
+              minute: "numeric",
+              hour12: true,
+            })}
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* Comment Content */}
+      <Typography variant="body1" sx={{ mb: 1 }}>
+        {c.content}
+      </Typography>
+
+      {/* Delete Action */}
+      <Stack direction="row" spacing={1}>
+        <Button
+          size="small"
+          startIcon={<DeleteIcon />}
+          color="error"
+          sx={{ fontSize: "12px" }}
+          onClick={() => handleDeleteComment(c.id)}
+        >
+          Delete
+        </Button>
+      </Stack>
+    </Paper>
+  ));
+};
+
+
   return (
     <Box sx={{ maxWidth: 900, mx: "auto", mt: 5, p: 2 }}>
       <Paper sx={{ p: 3 }}>
@@ -118,12 +264,8 @@ const AdminViewPost = () => {
         <Typography
           variant="h3"
           component="h1"
-          sx={{
-            fontWeight: "bold",
-            wordBreak: "break-word",
-            mb: 1,
-            fontSize: { xs: "1.8rem", md: "2.5rem" },
-          }}
+            sx={{ fontWeight: "bold", color: "white", textAlign: "center" , fontSize:{xs:15,md:20}, ml:{xs:0,sm:25,lg:60,md:40}}}
+
         >
           {post.title}
         </Typography>
@@ -150,6 +292,16 @@ const AdminViewPost = () => {
             <Typography variant="body2" sx={{ fontStyle: "italic" }}>
               <strong>Decision:</strong> {post.editor_review.status || "N/A"}
             </Typography>
+            {loadingComments ? (
+  <CircularProgress size={20} />
+) : comments.length > 0 ? (
+  renderComments(comments)
+) : (
+  <Typography variant="body2" color="text.secondary">
+    No comments yet.
+  </Typography>
+)}
+
           </Paper>
         )}
 
@@ -159,7 +311,7 @@ const AdminViewPost = () => {
         {post.media && post.media.length > 0 && (
           <Box sx={{ textAlign: "center", mb: 3 }}>
             <img
-              src={`${BASE_URL}/storage/${post.media[0].url}`}
+              src={`${STORAGE_URL}/${post.media[0].url}`}
               alt="Post Media"
               style={{
                 width: "100%",
@@ -170,7 +322,7 @@ const AdminViewPost = () => {
                 cursor: "pointer",
               }}
               onClick={() =>
-                setModalImage(`${BASE_URL}/storage/${post.media[0].url}`)
+                setModalImage(`${STORAGE_URL}/${post.media[0].url}`)
               }
             />
           </Box>
@@ -189,7 +341,6 @@ const AdminViewPost = () => {
           {post.content}
         </Typography>
 
-        {/* Action Buttons */}
         {/* Action Buttons */}
         <Grid container spacing={2} sx={{ mt: 4 }}>
           {post.status === "editor_approved" && (
@@ -211,7 +362,7 @@ const AdminViewPost = () => {
                   variant="contained"
                   fullWidth
                   disabled={submitting}
-                  onClick={() => openScheduleDialog(post)}
+                  onClick={openScheduleDialog}
                 >
                   Schedule
                 </Button>
@@ -233,34 +384,79 @@ const AdminViewPost = () => {
 
           {post.status === "scheduled" && (
             <>
-              <Grid item xs={12} md={6}>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  disabled={submitting}
-                  onClick={handlePublish}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: "black",
+                    mb: 2,
+                  }}
                 >
-                  Publish
-                </Button>
-              </Grid>
+                  Scheduled at : {post.schedule_at}
+                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "row",
+                    gap: 3,
+                  }}
+                >
+                  <Box>
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      disabled={submitting}
+                      onClick={openScheduleDialog}
+                    >
+                      Re-Schedule
+                    </Button>
+                  </Box>
 
-              <Grid item xs={12} md={6}>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  disabled={submitting}
-                  color="error"
-                  onClick={() => handleDelete(post)}
-                >
-                  Delete
-                </Button>
-              </Grid>
+                  <Box item xs={12} md={6}>
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      disabled={submitting}
+                      onClick={handlePublish}
+                    >
+                      Publish
+                    </Button>
+                  </Box>
+
+                  <Box item xs={12} md={6}>
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      disabled={submitting}
+                      color="error"
+                      onClick={() => handleDelete(post)}
+                    >
+                      Delete
+                    </Button>
+                  </Box>
+                </Box>
+              </Box>
             </>
           )}
 
           {post.status === "published" && (
             <>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  disabled={submitting}
+                  onClick={handleFeature}
+                  sx={{ bgcolor: post.featured ? "grey.600" : "success.main" }}
+                >
+                  {post.featured ? "Unfeature" : "Feature"}
+                </Button>
+              </Grid>
+              <Grid item xs={12} md={4}>
                 <Button
                   variant="contained"
                   fullWidth
@@ -271,7 +467,7 @@ const AdminViewPost = () => {
                 </Button>
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <Button
                   variant="contained"
                   fullWidth
@@ -281,6 +477,56 @@ const AdminViewPost = () => {
                 >
                   Delete
                 </Button>
+                {(post.status === "published" || post.status === "archived") && (
+  <Box mt={4}>
+    <Button
+      variant="text"
+      sx={{
+        fontSize: "12px",
+        gap: 1,
+        color: "black",
+      }}
+      onClick={() => {
+        setCommentsVisible(!commentsVisible);
+        if (!commentsVisible) fetchComments();
+      }}
+    >
+      <CommentIcon />
+      {commentsVisible ? "Hide Comments" : "View Comments"}
+    </Button>
+
+    {commentsVisible && (
+      <Box mt={2}>
+        {/* Add Comment Input */}
+        <Stack direction="row" spacing={1} mb={2}>
+          <TextField
+            variant="outlined"
+            fullWidth
+            size="small"
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Add a comment..."
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderColor: "black",
+              },
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "black",
+              },
+              "&:hover .MuiOutlinedInput-notchedOutline": {
+                borderColor: "black",
+              },
+              "& .MuiOutlinedInput-input": {
+                padding: "10px",
+              },
+            }}
+          />
+        </Stack>
+      </Box>
+    )}
+  </Box>
+)}
+
               </Grid>
             </>
           )}
@@ -311,6 +557,32 @@ const AdminViewPost = () => {
               </Grid>
             </>
           )}
+          {/* Schedule Dialog */}
+          <Dialog open={scheduleDialogOpen} onClose={closeScheduleDialog}>
+            <DialogTitle>Schedule Post</DialogTitle>
+            <DialogContent>
+              <TextField
+                label="Select Date & Time"
+                type="datetime-local"
+                value={scheduleDate}
+                onChange={(e) => setScheduleDate(e.target.value)}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={closeScheduleDialog} disabled={submitting}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSchedule}
+                disabled={submitting}
+                variant="contained"
+              >
+                Confirm
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Grid>
       </Paper>
       {/* Success Snackbar */}

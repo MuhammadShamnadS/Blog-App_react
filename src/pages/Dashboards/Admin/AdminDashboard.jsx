@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import authService from "../../../services/authService";
 import {
   Box,
   Typography,
@@ -29,17 +30,14 @@ function AdminDashboardPage() {
 
   const fetchStats = async () => {
     try {
-      const usersRes = await axios.get("/users");
-      const postsRes = await axios.get("/admin/posts");
-      const categoriesRes = await axios.get("/categories");
-
+      const res = await authService.getAdminDashboardStats();
       setStats({
-        users: usersRes.data.length,
-        posts: postsRes.data.length,
-        categories: categoriesRes.data.length,
+        users: res.data.users,
+        posts: res.data.posts.length,
+        categories: res.data.categories,
       });
 
-      setLatestPosts(postsRes.data.slice(0, 5));
+      setLatestPosts(res.data.posts);
     } catch (error) {
       console.error("Error fetching stats or latest posts:", error);
     }

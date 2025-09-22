@@ -11,17 +11,20 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import authService from "../../../services/authService";
 
 function CreatePost() {
   const [form, setForm] = useState({
     title: "",
     content: "",
     category: "",
-    tags: "",
     status: "draft",
     media: [],
   });
   const [categories, setCategories] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [selectedTags, setSelectedTags] = useState([]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -31,10 +34,20 @@ function CreatePost() {
   // fetch categories
   const fetchCategories = async () => {
     try {
-      const res = await axios.get("/categories");
+      const res = await authService.getAvailableCategories();
       setCategories(res.data);
     } catch (err) {
       console.error("Failed to load categories.");
+    }
+  };
+
+
+  const fetchTags = async (categoryId) => {
+    try {
+      const res = await authService.getAvailableTagsUnderACategories(categoryId);
+      setTags(res.data);
+    } catch (err) {
+      console.error("Failed to load tags.");
     }
   };
 
@@ -49,6 +62,14 @@ function CreatePost() {
         ...prev,
         media: [...(prev.media || []), ...Array.from(files)],
       }));
+    } else if (name === "category") {
+      setForm((prev) => ({ ...prev, category: value }));
+
+      const selectedCategory = categories.find((c) => c.name === value);
+      if (selectedCategory) {
+        fetchTags(selectedCategory.id);
+        setSelectedTags([]); 
+      }
     } else {
       setForm((prev) => ({
         ...prev,
@@ -64,14 +85,18 @@ function CreatePost() {
     }));
   };
 
+  const handleTagToggle = (tagName) => {
+    setSelectedTags((prev) =>
+      prev.includes(tagName)
+        ? prev.filter((t) => t !== tagName)
+        : [...prev, tagName]
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-
-    const tagsArray = form.tags
-      ? form.tags.split(",").map((tag) => tag.trim()).filter(Boolean)
-      : [];
 
     const formData = new FormData();
     formData.append("title", form.title);
@@ -79,7 +104,7 @@ function CreatePost() {
     formData.append("category", form.category);
     formData.append("status", form.status);
 
-    tagsArray.forEach((tag, index) => {
+    selectedTags.forEach((tag, index) => {
       formData.append(`tags[${index}]`, tag);
     });
 
@@ -91,20 +116,18 @@ function CreatePost() {
 
     setLoading(true);
     try {
-      const res = await axios.post("/posts", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await authService.createPost(formData);
       setSuccess("Post created successfully!");
       setForm({
         title: "",
         content: "",
         category: "",
-        tags: "",
         status: "draft",
         media: [],
       });
-      // navigate to view page
-      navigate(`/dashboard/posts/${res.data.post.id}`);
+      setTags([]);
+      setSelectedTags([]);
+      navigate(`/dashboard/author/posts/${res.data.post.id}`);
     } catch (err) {
       if (err.response?.data?.errors) {
         setError(JSON.stringify(err.response.data.errors));
@@ -153,6 +176,8 @@ function CreatePost() {
           rows={6}
           required
         />
+
+        {/* Category Select */}
         <TextField
           select
           label="Category"
@@ -160,28 +185,37 @@ function CreatePost() {
           value={form.category}
           onChange={handleChange}
         >
-          <MenuItem value="">
-            <em>Type a new category...</em>
-          </MenuItem>
           {categories.map((cat) => (
             <MenuItem key={cat.id} value={cat.name}>
               {cat.name}
             </MenuItem>
           ))}
         </TextField>
-        <TextField
-          label="Or Enter New Category"
-          name="category"
-          value={form.category}
-          onChange={handleChange}
-          placeholder="e.g. Technology"
-        />
-        <TextField
-          label="Tags (comma separated)"
-          name="tags"
-          value={form.tags}
-          onChange={handleChange}
-        />
+
+        {/* Tags List */}
+        {tags.length > 0 && (
+          <Box>
+            <Typography variant="subtitle1" mb={1}>
+              Select Tags
+            </Typography>
+            <Box display="flex" flexWrap="wrap" gap={1}>
+              {tags.map((tag) => (
+                <Button
+                  key={tag.id}
+                  variant={
+                    selectedTags.includes(tag.name) ? "contained" : "outlined"
+                  }
+                  size="small"
+                  onClick={() => handleTagToggle(tag.name)}
+                >
+                  {tag.name}
+                </Button>
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* Media Upload */}
         <Box>
           <Button variant="outlined" component="label">
             Upload Media
@@ -247,7 +281,10 @@ function CreatePost() {
         </Box>
 
         <Box display="flex" justifyContent="space-between" mt={2}>
-          <Button variant="outlined" onClick={() => navigate("/dashboard/posts")}>
+          <Button
+            variant="outlined"
+            onClick={() => navigate("/dashboard/author/posts")}
+          >
             Cancel
           </Button>
           <Button type="submit" variant="contained" disabled={loading}>

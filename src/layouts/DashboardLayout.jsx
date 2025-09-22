@@ -19,7 +19,7 @@ import LogoutButton from "../components/LogoutButton";
 import { AuthContext } from "../context/AuthContext";
 
 const drawerWidth = 220;
-const headerHeight = 55; // Header height
+const headerHeight = 55;
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
@@ -38,26 +38,28 @@ const DashboardLayout = () => {
     const navItems = {
       admin: [
         { label: "Home", path: "/dashboard" },
-        { label: "Role Requests", path: "/dashboard/pending-request" },
+        { label: "Role Requests", path: "/dashboard/admin/pending-request" },
         { label: "Assign Editors", path: "/dashboard/admin/post" },
-        { label: "Posts", path: "/dashboard/admin/approved-posts" },
+        { label: "Posts", path: "/dashboard/admin/posts" },
+        { label: "Category", path: "/dashboard/admin/category" },
       ],
       guest: [
         { label: "Home", path: "/dashboard" },
         ...(user?.is_manual === 0
-          ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }]
+          ? [{ label: "Change Password", path: "/dashboard/password-change" }]
           : []),
-        { label: "Request Role", path: "/dashboard/requestrole" },
+        { label: "Request Role", path: "/dashboard/guest/request-role" },
+        { label: "Authors", path: "/dashboard/guest/authors" },
       ],
       author: [
         ...(user?.is_manual === 0
-          ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }]
+          ? [{ label: "Change Password", path: "/dashboard/password-change" }]
           : []),
-        { label: "Posts", path: "/dashboard/posts" },
+        { label: "Posts", path: "/dashboard/author/posts" },
       ],
       editor: [
         ...(user?.is_manual === 0
-          ? [{ label: "Change Password", path: "/dashboard/Passwordchange" }]
+          ? [{ label: "Change Password", path: "/dashboard/password-change" }]
           : []),
         { label: "Posts", path: "/dashboard/editor/posts" },
       ],
@@ -108,13 +110,24 @@ const DashboardLayout = () => {
       {/* Header */}
       <Box
         position="fixed"
-        sx={{ bgcolor: "#2c2638", width: "100vw", height: headerHeight, p: 1, zIndex: 1200 }}
+        sx={{
+          bgcolor: "#2c2638",
+          width: "100vw",
+          height: headerHeight,
+          p: 1,
+          zIndex: 1200,
+        }}
       >
         <Box sx={{ display: "flex", justifyContent: "space-between", px: 2 }}>
           <Typography
             color="white"
-            variant="h5"
-            sx={{ fontFamily: "'Edu NSW ACT Hand Pre', cursive", fontWeight: "400" }}
+            sx={{
+              fontFamily: "'Edu NSW ACT Hand Pre', cursive",
+              fontWeight: "400",
+              fontSize:{xs:15, md:20},
+              ml:{xs:8, md:0},
+              mt:{xs:1, md:0}
+            }}
           >
             Blog Management System
           </Typography>
@@ -170,7 +183,7 @@ const DashboardLayout = () => {
         sx={{
           flexGrow: 1,
           p: 3,
-          mt: `${headerHeight + 16}px`, // add space for fixed header
+          mt: `${headerHeight + 16}px`,
           bgcolor: "#f9f9f9",
           minHeight: "70vh",
           maxWidth: "100vw",

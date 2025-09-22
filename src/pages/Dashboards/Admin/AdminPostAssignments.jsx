@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "../../../api/axios";
+import authService from "../../../services/authService";
 import {
   Container,
   Paper,
@@ -20,6 +20,8 @@ import {
   MenuItem,
   Tooltip,
 } from "@mui/material";
+import EmptyState from "../../../components/EmptyState";
+import ErrorCard from "../../../components/ErrorCard";
 
 function AdminPostAssignments() {
   const [posts, setPosts] = useState([]);
@@ -38,7 +40,7 @@ function AdminPostAssignments() {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get("/admin/posts/submitted");
+      const res = await authService.getPostsAdmin();
       setPosts(res.data || []);
     } catch (err) {
       setError("Failed to load posts.");
@@ -49,7 +51,7 @@ function AdminPostAssignments() {
   const fetchEditors = async (categoryId) => {
     if (editors[categoryId]) return;
     try {
-      const res = await axios.get(`/categories/${categoryId}/editors`);
+      const res = await authService.getEditorsAdmin(categoryId)
       setEditors((prev) => ({ ...prev, [categoryId]: res.data.editors || [] }));
     } catch (err) {
       setSnackbar({
@@ -66,9 +68,7 @@ function AdminPostAssignments() {
 
   const handleAssignEditor = async (post, editorId) => {
     try {
-      await axios.post(`/admin/posts/${post.id}/assign-editor`, {
-        editor_id: editorId,
-      });
+      await authService.postAssignEditor(post,editorId)
 
       setPosts((prev) =>
         prev.map((p) =>
@@ -109,7 +109,7 @@ function AdminPostAssignments() {
         >
           <Typography
             variant="h5"
-            sx={{ fontWeight: "bold", color: "white", textAlign: "center" }}
+            sx={{ fontWeight: "bold", color: "white", textAlign: "center" , fontSize:{xs:15,md:20}}}
           >
             Assign Editors to Submitted Posts
           </Typography>
@@ -127,7 +127,9 @@ function AdminPostAssignments() {
               <CircularProgress />
             </Box>
           ) : posts.length === 0 ? (
-            <Alert severity="info">No submitted posts available.</Alert>
+            <><ErrorCard message="No pending request found." />
+            <EmptyState message="No pending post to assign editor found." />
+            </>
           ) : (
             <TableContainer component={Paper} elevation={2}>
               <Table>

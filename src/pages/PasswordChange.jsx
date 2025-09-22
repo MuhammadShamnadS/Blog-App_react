@@ -11,6 +11,7 @@ import {
   Box,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import authService from "../services/authService";
 
 function PasswordChange() {
   const [password, setPassword] = useState("");
@@ -36,7 +37,7 @@ function PasswordChange() {
 
     setLoading(true);
 try {
-  const res = await axios.post("/change-password", { password });
+  const res = await authService.changePassword(password);
 
   if (res.data.error) {
     setError(res.data.error); 

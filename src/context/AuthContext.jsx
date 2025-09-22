@@ -1,11 +1,14 @@
 import React, { createContext, useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
+import authService from "../services/authService";
 
 export const AuthContext = createContext();
 
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Initialize user from localStorage
   useEffect(() => {
@@ -27,7 +30,7 @@ const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  // Fetch latest user info (useful for role changes)
+  // Fetch latest user info
   const fetchUser = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
@@ -50,7 +53,7 @@ const AuthProvider = ({ children }) => {
   // login
   const login = async (username, password = "") => {
     try {
-      const res = await API.post("/login", { username, password });
+      const res = await authService.login(username, password);
 
       if (res.data?.token && res.data?.user) {
         localStorage.setItem("token", res.data.token);
@@ -82,16 +85,51 @@ const AuthProvider = ({ children }) => {
   // logout
   const logout = async () => {
     try {
-      await API.post("/logout");
+      await authService.logout();
     } catch (e) {
-      console.warn("Logout API call failed:", e);
+      console.warn("Logout failed:", e);
     } finally {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       setUser(null);
-      window.location.href = "/login";
+      navigate("/login");
     }
   };
+let isFetchingUser = false;
+let userFetchPromise = null;
+
+useEffect(() => {
+  const interceptor = API.interceptors.response.use(
+    response => response,
+    async error => {
+      const originalRequest = error.config;
+
+      if (error.response?.status === 403 && !originalRequest._retry) {
+        originalRequest._retry = true;
+
+        if (!isFetchingUser) {
+          isFetchingUser = true;
+          userFetchPromise = fetchUser().finally(() => {
+            isFetchingUser = false;
+          });
+        }
+
+        const updatedUser = await userFetchPromise;
+        if (updatedUser) {
+          return API(originalRequest);
+        }
+      }
+
+      return Promise.reject(error);
+    }
+  );
+
+  return () => {
+    API.interceptors.response.eject(interceptor);
+  };
+}, [fetchUser]);
+
+
 
   return (
     <AuthContext.Provider
