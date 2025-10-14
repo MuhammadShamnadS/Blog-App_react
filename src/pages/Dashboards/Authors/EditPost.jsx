@@ -12,8 +12,9 @@ import {
 } from "@mui/material";
 import { Delete } from "@mui/icons-material";
 import axios from "../../../api/axios";
+import authService from "../../../services/authService";
 
-const BASE_URL = "http://localhost:8000";
+const STORAGE_URL = import.meta.env.VITE_STORAGE_URL;
 
 function EditPost() {
   const { id } = useParams();
@@ -24,20 +25,20 @@ function EditPost() {
     content: "",
     category: "",
     tags: "",
-    media: [], // new uploads
+    media: [],
   });
-  const [existingMedia, setExistingMedia] = useState([]); // already saved
+  const [existingMedia, setExistingMedia] = useState([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   // fetch categories
   useEffect(() => {
-    axios.get("/categories").then((res) => setCategories(res.data));
+    authService.getAvailableCategories().then((res) => setCategories(res.data));
   }, []);
 
   // fetch post details
   useEffect(() => {
-    axios.get(`/posts/${id}`).then((res) => {
+    authService.fetchSinglePostsByAuthors(id).then((res) => {
       const post = res.data;
       setForm({
         title: post.title,
@@ -64,7 +65,7 @@ function EditPost() {
 
   const removeExistingMedia = async (mediaId) => {
     try {
-      await axios.delete(`/media/${mediaId}`);
+      await authService.deleteMedia(mediaId);
       setExistingMedia((prev) => prev.filter((m) => m.id !== mediaId));
     } catch {
       alert("Failed to delete media.");
@@ -103,11 +104,9 @@ function EditPost() {
     }
 
     try {
-      await axios.post(`/posts/${id}?_method=PUT`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      await authService.EditSinglePost(id, formData);
       setSuccess("Post updated successfully!");
-      navigate(`/dashboard/posts/${id}`);
+      navigate(`/dashboard/author/posts/${id}`);
     } catch (err) {
       setError("Failed to update post.");
     }
@@ -180,7 +179,7 @@ function EditPost() {
                 }}
               >
                 <img
-                  src={`${BASE_URL}/storage/${m.url}`}
+                  src={`${STORAGE_URL}/${m.url}`}
                   alt="media"
                   style={{
                     width: "100%",

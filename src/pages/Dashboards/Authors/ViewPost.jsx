@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "../../../api/axios";
+import authService from "../../../services/authService";
 
-const BASE_URL = "http://localhost:8000";
+const STORAGE_URL = import.meta.env.VITE_STORAGE_URL;
 
 const ViewPost = () => {
   const { id } = useParams();
@@ -15,7 +16,7 @@ const ViewPost = () => {
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const res = await axios.get(`/posts/${id}`);
+        const res = await authService.fetchSinglePostsByAuthors(id);
         setPost(res.data);
       } catch {
         setError("Failed to load post.");
@@ -29,13 +30,7 @@ const ViewPost = () => {
   // handle draft/submit
   const updateStatus = async (status) => {
     try {
-      await axios.put(`/posts/${id}`, {
-        title: post.title,
-        content: post.content,
-        category: post.category?.name,
-        tags: post.tags?.map((t) => t.name),
-        status,
-      });
+      await authService.handleDraftOrSubmit(id, post, status);
       alert(`Post ${status === "draft" ? "saved as draft" : "submitted"}!`);
       const res = await axios.get(`/posts/${id}`);
       setPost(res.data);
@@ -47,9 +42,9 @@ const ViewPost = () => {
   // handle resubmit (separate controller endpoint)
   const handleResubmit = async () => {
     try {
-      await axios.post(`/posts/${id}/resubmit`);
+      await authService.resubmitPost(id);
       alert("Post resubmitted successfully!");
-      const res = await axios.get(`/posts/${id}`);
+      const res = await authService.fetchSinglePostsByAuthors(id);
       setPost(res.data);
     } catch {
       alert("Failed to resubmit post.");
@@ -92,8 +87,8 @@ const ViewPost = () => {
                   post.status === "submitted"
                     ? "#4caf50"
                     : post.status === "editor_rejected"
-                    ? "#f44336"
-                    : "#ff9800",
+                      ? "#f44336"
+                      : "#ff9800",
                 color: "#fff",
                 fontSize: "12px",
               }}
@@ -101,7 +96,7 @@ const ViewPost = () => {
               {post.status}
             </span>
             <button
-              onClick={() => navigate(`/dashboard/posts/${id}/edit`)}
+              onClick={() => navigate(`/dashboard/author/posts/${id}/edit`)}
               disabled={isSubmitted}
               style={{
                 padding: "6px 12px",
@@ -158,7 +153,7 @@ const ViewPost = () => {
             post.media.map((m) => (
               <img
                 key={m.id}
-                src={`${BASE_URL}/storage/${m.url}`}
+                src={`${STORAGE_URL}/${m.url}`}
                 alt="Post media"
                 style={{
                   width: "200px",
@@ -168,7 +163,7 @@ const ViewPost = () => {
                 }}
                 onClick={() =>
                   !isSubmitted &&
-                  setModalImage(`${BASE_URL}/storage/${m.url}`)
+                  setModalImage(`${STORAGE_URL}/${m.url}`)
                 }
               />
             ))
@@ -209,7 +204,7 @@ const ViewPost = () => {
                 background: "#1976d2",
                 color: "#fff",
               }}
-            > 
+            >
               Resubmit
             </button>
           ) : (

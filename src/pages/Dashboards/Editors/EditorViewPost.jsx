@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "../../../api/axios";
+import authService from "../../../services/authService";
 
-const BASE_URL = "http://localhost:8000";
+
+const STORAGE_URL = import.meta.env.VITE_STORAGE_URL;
+
 
 const EditorViewPost = () => {
   const { reviewId } = useParams();
@@ -18,7 +21,7 @@ const EditorViewPost = () => {
     const fetchReview = async () => {
       try {
         //fetch a single review by id
-        const res = await axios.get(`/editor/reviews/${reviewId}`);
+        const res = await authService.getReview(reviewId);
         setReview(res.data);
       } catch {
         setError("Failed to load review.");
@@ -37,10 +40,7 @@ const EditorViewPost = () => {
 
     setSubmitting(true);
     try {
-      await axios.post(`/editor/reviews/${reviewId}`, {
-        status,
-        feedback,
-      });
+      await authService.postReview(reviewId, status, feedback);
       alert(`Post ${status} successfully!`);
       navigate("/dashboard/editor/posts");
     } catch (err) {
@@ -114,7 +114,7 @@ const EditorViewPost = () => {
             post.media.map((m) => (
               <img
                 key={m.id}
-                src={`${BASE_URL}/storage/${m.url}`}
+                src={`${STORAGE_URL}/${m.url}`}
                 alt="Post media"
                 style={{
                   width: "200px",
@@ -122,7 +122,7 @@ const EditorViewPost = () => {
                   marginRight: "10px",
                   cursor: "pointer",
                 }}
-                onClick={() => setModalImage(`${BASE_URL}/storage/${m.url}`)}
+                onClick={() => setModalImage(`${STORAGE_URL}/${m.url}`)}
               />
             ))
           ) : (

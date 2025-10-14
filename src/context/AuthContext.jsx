@@ -1,11 +1,31 @@
 import React, { createContext, useState, useEffect, useCallback } from "react";
-import API from "../api/axios";
+import { useNavigate } from "react-router-dom";
+import { API, setRoleChangeHandler } from "../api/axios";
+import authService from "../services/authService";
+import RoleChangeModal from "../components/RoleChangeModal";
 
 export const AuthContext = createContext();
 
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [roleChangeOpen, setRoleChangeOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // Show role change modal
+  const showRoleChangeModal = () => setRoleChangeOpen(true);
+
+  // Register role change handler with Axios
+  useEffect(() => {
+    setRoleChangeHandler(showRoleChangeModal);
+    return () => setRoleChangeHandler(null);
+  }, [showRoleChangeModal]);
+
+  // Close role change modal & sync user role
+  const handleRoleChangeClose = async () => {
+    setRoleChangeOpen(false);
+    await syncUserRole();
+  };
 
   // Initialize user from localStorage
   useEffect(() => {
@@ -23,12 +43,11 @@ const AuthProvider = ({ children }) => {
         localStorage.removeItem("token");
       }
     }
-
     setLoading(false);
   }, []);
 
-  // Fetch latest user info (useful for role changes)
-  const fetchUser = useCallback(async () => {
+  // Sync user role from backend
+  const syncUserRole = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return null;
@@ -40,9 +59,9 @@ const AuthProvider = ({ children }) => {
         localStorage.setItem("user", JSON.stringify(res.data));
         return res.data;
       }
-      return null;
     } catch (err) {
-      console.error("Failed to fetch user:", err);
+      console.error("Failed to sync user role:", err);
+      logout();
       return null;
     }
   }, []);
@@ -50,8 +69,7 @@ const AuthProvider = ({ children }) => {
   // login
   const login = async (username, password = "") => {
     try {
-      const res = await API.post("/login", { username, password });
-
+      const res = await authService.login(username, password);
       if (res.data?.token && res.data?.user) {
         localStorage.setItem("token", res.data.token);
         localStorage.setItem("user", JSON.stringify(res.data.user));
@@ -82,22 +100,32 @@ const AuthProvider = ({ children }) => {
   // logout
   const logout = async () => {
     try {
-      await API.post("/logout");
+      await authService.logout();
     } catch (e) {
-      console.warn("Logout API call failed:", e);
+      console.warn("Logout failed:", e);
     } finally {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       setUser(null);
-      window.location.href = "/login";
+      navigate("/login");
     }
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, socialLogin, fetchUser, loading }}
+      value={{
+        user,
+        login,
+        logout,
+        socialLogin,
+        fetchUser: syncUserRole,
+        loading,
+        syncUserRole,
+        showRoleChangeModal,
+      }}
     >
       {children}
+      <RoleChangeModal open={roleChangeOpen} onClose={handleRoleChangeClose} />
     </AuthContext.Provider>
   );
 };

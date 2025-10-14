@@ -1,14 +1,15 @@
 import React, { useContext, useEffect, useState } from "react";
 import { useNavigate, Outlet } from "react-router-dom";
-import { AuthContext } from "../context/AuthContext";
+import { AuthContext } from "../../context/AuthContext";
 import { CircularProgress, Box } from "@mui/material";
 
 const ProtectedLayout = () => {
-  const { user } = useContext(AuthContext);
+  const { user, loading } = useContext(AuthContext);
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
+    if (loading) return;
     if (!user) {
       navigate("/login");
     } else {
@@ -24,7 +25,7 @@ const ProtectedLayout = () => {
     );
   }
 
-  return <Outlet />; 
+  return <Outlet />;
 };
 
 export default ProtectedLayout;

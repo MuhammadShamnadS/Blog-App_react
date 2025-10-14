@@ -11,6 +11,7 @@ import {
   Box,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import authService from "../services/authService";
 
 function PasswordChange() {
   const [password, setPassword] = useState("");
@@ -23,7 +24,7 @@ function PasswordChange() {
   const handleChangePassword = async () => {
     setError("");
     setSuccess("");
-    
+
 
     if (!password || !confirmPassword) {
       setError("Please fill in both fields.");
@@ -35,24 +36,24 @@ function PasswordChange() {
     }
 
     setLoading(true);
-try {
-  const res = await axios.post("/change-password", { password });
+    try {
+      const res = await authService.changePassword(password);
 
-  if (res.data.error) {
-    setError(res.data.error); 
-  } else {
-    setSuccess(res.data.message || "Password updated successfully.");
-    setPassword("");
-    setConfirmPassword("");
-  }
-} catch (err) {
-  if (err.response && err.response.data) {
-    const apiError = err.response.data;
-    setError(apiError.error || Object.values(apiError)[0]);
-  } else {
-    setError("Something went wrong, please try again.");
-  }
-}
+      if (res.data.error) {
+        setError(res.data.error);
+      } else {
+        setSuccess(res.data.message || "Password updated successfully.");
+        setPassword("");
+        setConfirmPassword("");
+      }
+    } catch (err) {
+      if (err.response && err.response.data) {
+        const apiError = err.response.data;
+        setError(apiError.error || Object.values(apiError)[0]);
+      } else {
+        setError("Something went wrong, please try again.");
+      }
+    }
 
     setLoading(false);
   };
@@ -110,14 +111,14 @@ try {
           <Button
             variant="contained"
             fullWidth
-            onClick={()=>Navigate("/dashboard")}
+            onClick={() => Navigate("/dashboard")}
             sx={{
-                mt:"10px"
+              mt: "10px"
             }}
           >
             Go to Dashboard
           </Button>
-          
+
         </Box>
       </Paper>
     </Container>

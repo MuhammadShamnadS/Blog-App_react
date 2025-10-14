@@ -14,6 +14,7 @@ import {
   Select,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import authService from "../services/authService";
 
 function RequestRole() {
   const [role, setRole] = useState("");
@@ -27,7 +28,7 @@ function RequestRole() {
   // Fetch existing request status
   const statusfetch = async () => {
     try {
-      const res = await axios.get("/requeststatus");
+      const res = await authService.roleRequestStatus();
 
       if (res.data.error) {
         setError(res.data.error);
@@ -60,9 +61,8 @@ function RequestRole() {
 
     setLoading(true);
     try {
-      const payload = { requested_role: role };
 
-      const res = await axios.post("/role-request", payload);
+      const res = await authService.requestRoleChange(role);
 
       if (res.data.error) {
         setError(res.data.error);
@@ -98,8 +98,8 @@ function RequestRole() {
               requestStatus === "pending"
                 ? "info"
                 : requestStatus === "approved"
-                ? "success"
-                : "warning"
+                  ? "success"
+                  : "warning"
             }
             sx={{ mb: 2 }}
           >

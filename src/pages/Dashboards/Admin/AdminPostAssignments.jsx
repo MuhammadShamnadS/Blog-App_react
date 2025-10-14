@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "../../../api/axios";
+import authService from "../../../services/authService";
 import {
   Container,
   Paper,
@@ -19,7 +19,11 @@ import {
   Select,
   MenuItem,
   Tooltip,
+  Button,
 } from "@mui/material";
+import EmptyState from "../../../components/EmptyState";
+import ErrorCard from "../../../components/ErrorCard";
+import CustomPagination from "../../../components/Pagination";
 
 function AdminPostAssignments() {
   const [posts, setPosts] = useState([]);
@@ -28,47 +32,63 @@ function AdminPostAssignments() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState({});
   const [assignedEditors, setAssignedEditors] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [pagination, setPagination] = useState({});
+
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success",
   });
 
-  const fetchPosts = async () => {
+  const fetchPosts = async (page = 1) => {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get("/admin/posts/submitted");
-      setPosts(res.data || []);
+      const res = await authService.getPostsAdmin(page);
+      setPosts(res.data.data || []);
+      setCurrentPage(res.data.current_page || 1);
+      setLastPage(res.data.last_page || 1);
     } catch (err) {
       setError("Failed to load posts.");
     }
     setLoading(false);
   };
 
-  const fetchEditors = async (categoryId) => {
-    if (editors[categoryId]) return;
+  const fetchEditors = async (categoryId, page = 1) => {
     try {
-      const res = await axios.get(`/categories/${categoryId}/editors`);
-      setEditors((prev) => ({ ...prev, [categoryId]: res.data.editors || [] }));
+      const res = await authService.getEditorsAdmin(categoryId, page);
+
+      setEditors((prev) => ({
+        ...prev,
+        [categoryId]: res.data.editors.data || [],
+      }));
+
+      // store pagination info per category
+      setPagination((prev) => ({
+        ...prev,
+        [categoryId]: {
+          current_page: res.data.editors.current_page,
+          last_page: res.data.editors.last_page,
+        },
+      }));
     } catch (err) {
       setSnackbar({
         open: true,
-        message: "Failed to load posts.",
+        message: "Failed to load editors.",
         severity: "error",
       });
     }
   };
-
+  
   useEffect(() => {
     fetchPosts();
   }, []);
 
   const handleAssignEditor = async (post, editorId) => {
     try {
-      await axios.post(`/admin/posts/${post.id}/assign-editor`, {
-        editor_id: editorId,
-      });
+      await authService.postAssignEditor(post, editorId)
 
       setPosts((prev) =>
         prev.map((p) =>
@@ -109,7 +129,7 @@ function AdminPostAssignments() {
         >
           <Typography
             variant="h5"
-            sx={{ fontWeight: "bold", color: "white", textAlign: "center" }}
+            sx={{ fontWeight: "bold", color: "white", textAlign: "center", fontSize: { xs: 15, md: 20 } }}
           >
             Assign Editors to Submitted Posts
           </Typography>
@@ -127,7 +147,9 @@ function AdminPostAssignments() {
               <CircularProgress />
             </Box>
           ) : posts.length === 0 ? (
-            <Alert severity="info">No submitted posts available.</Alert>
+            <><ErrorCard message="No pending request found." />
+              <EmptyState message="No pending post to assign editor found." />
+            </>
           ) : (
             <TableContainer component={Paper} elevation={2}>
               <Table>
@@ -206,15 +228,15 @@ function AdminPostAssignments() {
                               post.status === "submitted"
                                 ? "black"
                                 : post.status === "under_review"
-                                ? "blue"
-                                : "red",
+                                  ? "blue"
+                                  : "red",
                           }}
                         >
                           {post.status === "submitted"
                             ? "Submitted"
                             : post.status === "under_review"
-                            ? "Under Review"
-                            : post.status}
+                              ? "Under Review"
+                              : post.status}
                         </Typography>
                       </TableCell>
 
@@ -225,21 +247,87 @@ function AdminPostAssignments() {
                             <InputLabel>Select Editor</InputLabel>
                             <Select
                               value={assignedEditors[post.id] || ""}
-                              onOpen={() => fetchEditors(post.category_id)}
-                              onChange={(e) =>
-                                handleAssignEditor(post, e.target.value)
-                              }
+                              onOpen={() => fetchEditors(post.category_id, pagination[post.category_id]?.current_page || 1)}
+                              onChange={(e) => handleAssignEditor(post, e.target.value)}
+                              fullWidth
                             >
                               {editors[post.category_id]?.length === 0 ? (
                                 <MenuItem disabled>No editors</MenuItem>
                               ) : (
                                 editors[post.category_id]?.map((editor) => (
-                                  <MenuItem key={editor.id} value={editor.id}>
-                                    {editor.user?.name}
+                                  <MenuItem
+                                    key={editor.id}
+                                    value={editor.id}
+                                    sx={{
+                                      maxWidth: 200,
+                                      display: "flex",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    <Tooltip
+                                      title={editor.user?.name || ""}
+                                      placement="right"
+                                      enterDelay={500}
+                                      arrow
+                                    >
+                                      <Typography
+                                        noWrap
+                                        sx={{
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                          whiteSpace: "nowrap",
+                                          flex: 1,
+                                        }}
+                                      >
+                                        {editor.user?.name}
+                                      </Typography>
+                                    </Tooltip>
                                   </MenuItem>
+
                                 ))
                               )}
+                              {/* Pagination controls */}
+                              {pagination[post.category_id] && (
+                                <Box display="flex" justifyContent="space-between" px={2} py={1}>
+                                  <Button
+                                    size="small"
+                                    disabled={pagination[post.category_id].current_page <= 1}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      fetchEditors(
+                                        post.category_id,
+                                        pagination[post.category_id].current_page - 1
+                                      );
+                                    }}
+                                  >
+                                    Prev
+                                  </Button>
+
+                                  <Typography variant="body2">
+                                    Page {pagination[post.category_id].current_page} of{" "}
+                                    {pagination[post.category_id].last_page}
+                                  </Typography>
+
+                                  <Button
+                                    size="small"
+                                    disabled={
+                                      pagination[post.category_id].current_page >=
+                                      pagination[post.category_id].last_page
+                                    }
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      fetchEditors(
+                                        post.category_id,
+                                        pagination[post.category_id].current_page + 1
+                                      );
+                                    }}
+                                  >
+                                    Next
+                                  </Button>
+                                </Box>
+                              )}
                             </Select>
+
                           </FormControl>
                         ) : (
                           <Tooltip
@@ -292,6 +380,11 @@ function AdminPostAssignments() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+      <CustomPagination
+        currentPage={currentPage}
+        lastPage={lastPage}
+        onPageChange={fetchPosts}
+      />
     </Container>
   );
 }

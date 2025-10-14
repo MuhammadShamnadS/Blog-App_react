@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import authService from "../../../services/authService";
 import {
   Box,
   Typography,
@@ -6,17 +7,11 @@ import {
   Grid,
   List,
   ListItem,
-  ListItemText,
-  Divider,
-  ListItemAvatar,
-  Avatar,
   Paper,
 } from "@mui/material";
-import axios from "../../../api/axios";
 import PeopleIcon from "@mui/icons-material/People";
 import PostAddIcon from "@mui/icons-material/PostAdd";
 import CategoryIcon from "@mui/icons-material/Category";
-import ArticleIcon from "@mui/icons-material/Article";
 import ListIcon from "@mui/icons-material/List";
 
 function AdminDashboardPage() {
@@ -29,17 +24,14 @@ function AdminDashboardPage() {
 
   const fetchStats = async () => {
     try {
-      const usersRes = await axios.get("/users");
-      const postsRes = await axios.get("/admin/posts");
-      const categoriesRes = await axios.get("/categories");
-
+      const res = await authService.getAdminDashboardStats();
       setStats({
-        users: usersRes.data.length,
-        posts: postsRes.data.length,
-        categories: categoriesRes.data.length,
+        users: res.data.users,
+        posts: res.data.posts.length,
+        categories: res.data.categories,
       });
 
-      setLatestPosts(postsRes.data.slice(0, 5));
+      setLatestPosts(res.data.posts);
     } catch (error) {
       console.error("Error fetching stats or latest posts:", error);
     }

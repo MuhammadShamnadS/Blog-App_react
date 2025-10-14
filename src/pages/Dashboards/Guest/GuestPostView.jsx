@@ -13,17 +13,25 @@ import {
   Paper,
   Divider,
   Stack,
+  TextField,
 } from "@mui/material";
 import { useContext } from "react";
+import ReplyIcon from "@mui/icons-material/Reply";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { AuthContext } from "../../../context/AuthContext";
-
-
-
-// Slick carousel styles
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
+import SendIcon from "@mui/icons-material/Send";
+import CommentIcon from "@mui/icons-material/Comment";
+import PersonIcon from "@mui/icons-material/Person";
+import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
+import authService from "../../../services/authService";
+import ErrorCard from "../../../components/ErrorCard";
+import EmptyState from "../../../components/EmptyState";
 
-const BASE_URL = "http://localhost:8000/storage";
+const STORAGE_URL = import.meta.env.VITE_STORAGE_URL;
 
 const GuestPostView = () => {
   const { id } = useParams();
@@ -33,118 +41,268 @@ const GuestPostView = () => {
   const [error, setError] = useState("");
   const [liked, setLiked] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
-  const [count,setCount]=useState("");
-    const [commentsVisible, setCommentsVisible] = useState(false);
-    const [comments, setComments] = useState([]);
-    const [newComment, setNewComment] = useState("");
-    const [loadingComments, setLoadingComments] = useState(false);
-    const { user } = useContext(AuthContext);
+  const [count, setCount] = useState("");
+  const [commentsVisible, setCommentsVisible] = useState(false);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState("");
+  const [loadingComments, setLoadingComments] = useState(false);
+  const { user } = useContext(AuthContext);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyInputs, setReplyInputs] = useState({});
+  const [repliesVisibleFor, setRepliesVisibleFor] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
+
+
+  const handlePostUnavailable = () => {
+    setErrorMessage("The post you are looking for is no longer available.");
+    setTimeout(() => navigate(-1), 3000);
+  };
+
 
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const res = await axios.get(`/guest/post/${id}`);
+        const res = await authService.getSinglePostsByGuest(id);
         const postData = res.data["0"] || null;
         const isLiked = res.data.is_liked || false;
         setPost(postData);
         setLiked(isLiked);
+        fetchPostLike();
       } catch (err) {
         console.error(err);
-        setError("Failed to load post.");
+        setError("Post unavailable.");
       } finally {
         setLoading(false);
       }
     };
     fetchPost();
   }, [id]);
+
+  const fetchPostLike = async () => {
+    try {
+      const res = await authService.getLikes(id);
+      setCount(res.data);
+    } catch (err) {
+      console.log(err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLikeToggle = async () => {
     if (likeLoading) return;
     setLikeLoading(true);
     try {
-      const res = await axios.post("/like/toggle", { post_id: id });
+      const res = await authService.postLikes(id);
       setLiked(res.data.liked);
+      fetchPostLike();
     } catch (err) {
-      console.error(err);
+      if (err.code === "NOT_FOUND") {
+        handlePostUnavailable();
+      } else {
+        setError(err.message || "Failed to like post.");
+      }
     } finally {
       setLikeLoading(false);
     }
   };
 
-    useEffect(() => {
-    const fetchPostLike = async () => {
-      try {
-        const res = await axios.get(`/post/${id}/likes`);
-        setCount(res.data);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load like.");
-      } finally {
-        setLoading(false);
+
+
+  const fetchComments = async () => {
+    setLoadingComments(true);
+    try {
+      const res = await authService.getComments(id);
+      setComments(res.data.comments || []);
+    } catch (err) {
+      setError("Failed to load comments.");
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handleAddComment = async (parentId = null, content = null) => {
+    const commentContent = content ?? newComment;
+    if (!commentContent.trim()) return;
+
+    try {
+      await authService.postComments(id, parentId, commentContent);
+      setNewComment("");
+      fetchComments();
+    } catch (err) {
+      if (err.code === "NOT_FOUND") {
+        handlePostUnavailable();
+      } else {
+        setError(err.message || "Failed to add comment.");
       }
-    };
-    fetchPostLike();
-  }, [id,handleLikeToggle]);
-
-const fetchComments = async () => {
-  setLoadingComments(true);
-  try {
-    const res = await axios.get(`/posts/${id}/comments`);
-    setComments(res.data.comments || []);
-  } catch (err) {
-    console.error(err);
-    setError("Failed to load comments.");
-  } finally {
-    setLoadingComments(false);
-  }
-};
-
-const handleAddComment = async (parentId = null) => {
-  if (!newComment.trim()) return;
-  try {
-    const res = await axios.post("/comments", {
-      post_id: id,
-      parent_id: parentId,
-      content: newComment,
-    });
-    setNewComment("");
-    fetchComments();
-  } catch (err) {
-    console.error(err);
-    setError("Failed to add comment.");
-  }
-};
-const handleDeleteComment = async (commentId) => {
-  try {
-    await axios.delete(`/comments/${commentId}`);
-    fetchComments();
-  } catch (err) {
-    console.error(err);
-    setError("Failed to delete comment.");
-  }
-};
-
-const renderComments = (commentList) => {
-  return commentList.map((c) => (
-    <Box key={c.id} sx={{ mb: 2, pl: c.parent_id ? 4 : 0, borderLeft: c.parent_id ? "2px solid #ddd" : "none" }}>
-      <Typography variant="subtitle2">
-        {c.user?.name || "Unknown"} • {new Date(c.created_at).toLocaleString()}
-      </Typography>
-      <Typography variant="body1" sx={{ mb: 1 }}>{c.content}</Typography>
-
-      <Stack direction="row" spacing={1}>
-        <Button size="small" onClick={() => handleAddComment(c.id)}>Reply</Button>
-        {c.user_id === user?.id || user?.role === "admin" ? (
-          <Button size="small" color="error" onClick={() => handleDeleteComment(c.id)}>Delete</Button>
-        ) : null}
-      </Stack>
-
-      {c.replies && c.replies.length > 0 && renderComments(c.replies)}
-    </Box>
-  ));
-};
+    }
+  };
 
 
 
+  const handleDeleteComment = async (commentId) => {
+    try {
+      await authService.deleteComment(commentId);
+      fetchComments();
+    } catch (err) {
+      console.error(err);
+      setError("Failed to delete comment.");
+    }
+  };
+
+  const renderComments = (commentList) => {
+    return commentList.map((c) => (
+      <Paper
+        key={c.id}
+        elevation={1}
+        sx={{
+          p: 2,
+          mb: 2,
+          wordBreak: "break-word",
+          overflowWrap: "anywhere",
+        }}
+      >
+        {/* Comment Header: Avatar + User + Timestamp */}
+        <Box display="flex" alignItems="center" gap={1} mb={1} flexWrap="wrap">
+          <PersonIcon fontSize="large" sx={{ color: "#1976d2" }} />
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              variant="subtitle1"
+              fontWeight={600}
+              sx={{
+                wordBreak: "break-word",
+                overflowWrap: "anywhere",
+              }}
+              title={c.user?.name || "Unknown"}
+            >
+              {c.user?.name || "Unknown"}
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
+            >
+              {new Date(c.created_at).toLocaleString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "numeric",
+                hour12: true,
+              })}
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Comment Content */}
+        <Typography
+          variant="body1"
+          sx={{
+            mb: 1,
+            wordBreak: "break-word",
+            overflowWrap: "anywhere",
+            whiteSpace: "pre-line",
+          }}
+        >
+          {c.content}
+        </Typography>
+
+        {/* Comment Actions */}
+        <Stack
+          direction="row"
+          spacing={1}
+          mb={1}
+          flexWrap="wrap"
+        >
+          {c.parent_id === null && (
+            <Button
+              size="small"
+              startIcon={<ReplyIcon />}
+              sx={{ fontSize: "12px", color: "#1976d2" }}
+              onClick={() =>
+                setReplyingTo(replyingTo === c.id ? null : c.id)
+              }
+            >
+              Reply
+            </Button>
+          )}
+
+          {(c.user_id === user?.id || user?.role === "admin") && (
+            <Button
+              size="small"
+              startIcon={<DeleteIcon />}
+              color="error"
+              sx={{ fontSize: "12px" }}
+              onClick={() => handleDeleteComment(c.id)}
+            >
+              Delete
+            </Button>
+          )}
+        </Stack>
+
+        {/* Replies toggle */}
+        {c.replies && c.replies.length > 0 && (
+          <Button
+            size="small"
+            startIcon={
+              repliesVisibleFor === c.id ? (
+                <ArrowDropUpIcon />
+              ) : (
+                <ArrowDropDownIcon />
+              )
+            }
+            sx={{ fontSize: "12px", color: "gray", textTransform: "none" }}
+            onClick={() =>
+              setRepliesVisibleFor(repliesVisibleFor === c.id ? null : c.id)
+            }
+          >
+            {repliesVisibleFor === c.id
+              ? "Hide Replies"
+              : `Show Replies (${c.replies.length})`}
+          </Button>
+        )}
+
+        {/* Reply Input */}
+        {c.parent_id === null && replyingTo === c.id && (
+          <Stack direction="row" spacing={1} mt={1} alignItems="center" flexWrap="wrap">
+            <TextField
+              fullWidth
+              size="small"
+              variant="outlined"
+              value={replyInputs[c.id] || ""}
+              onChange={(e) =>
+                setReplyInputs((prev) => ({ ...prev, [c.id]: e.target.value }))
+              }
+              placeholder="Write your reply..."
+              sx={{
+                "& .MuiOutlinedInput-notchedOutline": { borderColor: "black" },
+                "& .MuiOutlinedInput-input": { padding: "10px" },
+              }}
+            />
+            <Button
+              variant="text"
+              color="primary"
+              onClick={() => {
+                handleAddComment(c.id, replyInputs[c.id]);
+                setReplyingTo(null);
+                setReplyInputs((prev) => ({ ...prev, [c.id]: "" }));
+              }}
+            >
+              <SendIcon />
+            </Button>
+          </Stack>
+        )}
+
+        {/* Render Replies */}
+        {repliesVisibleFor === c.id && c.replies.length > 0 && (
+          <Box mt={2} ml={{ xs: 0, sm: 4 }}>
+            {renderComments(c.replies)}
+          </Box>
+        )}
+      </Paper>
+    ));
+  };
 
 
   if (loading)
@@ -160,7 +318,7 @@ const renderComments = (commentList) => {
   if (!post)
     return (
       <Typography sx={{ textAlign: "center", mt: 5 }}>
-        No post found.
+        <EmptyState message="The post you are looking for is no longer available" />
       </Typography>
     );
 
@@ -174,15 +332,23 @@ const renderComments = (commentList) => {
   };
 
   return (
-    <Box sx={{ maxWidth: 900, mx: "auto", mt: 5, px: 2, fontFamily: "'Roboto', sans-serif" }}>
-      {/* Back Button */}
-      <Button variant="outlined" sx={{ mb: 3 }} onClick={() => navigate(-1)}>
-        ← Back
-      </Button>
-
-      {/* Post Card */}
+    <Box
+      sx={{
+        maxWidth: 900,
+        mx: "auto",
+        mt: 5,
+        px: 2,
+        fontFamily: "'Roboto', sans-serif",
+      }}
+    >
       <Paper sx={{ p: { xs: 3, md: 5 }, borderRadius: 3, boxShadow: 3 }}>
-        {/* Title & Like */}
+        <Button
+          variant="text"
+          sx={{ mb: 3, color: "black" }}
+          onClick={() => navigate(-1)}
+        >
+          <ArrowBackIosIcon /> Back
+        </Button>
         <Stack
           direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
@@ -211,16 +377,22 @@ const renderComments = (commentList) => {
               color: liked ? "red" : "gray",
               alignSelf: { xs: "flex-start", sm: "center" },
             }}
-          ><Typography sx={{
-            color:"black"
-          }}>
-            {count?.likes ?? 0}
+          >
+            <Typography
+              sx={{
+                color: "black",
+              }}
+            >
+              {count?.likes ?? 0}
             </Typography>
-            {liked ? <FavoriteIcon fontSize="large" /> : <FavoriteBorderIcon fontSize="large" />}
+            {liked ? (
+              <FavoriteIcon fontSize="large" />
+            ) : (
+              <FavoriteBorderIcon fontSize="large" />
+            )}
           </IconButton>
         </Stack>
 
-        {/* Author & Date */}
         <Typography
           variant="subtitle1"
           color="text.secondary"
@@ -231,7 +403,11 @@ const renderComments = (commentList) => {
             fontFamily: "'Roboto', sans-serif",
           }}
         >
-          By <strong>{post.author?.name || post.author?.username || "Unknown"}</strong> •{" "}
+          By{" "}
+          <strong>
+            {post.author?.name || post.author?.username || "Unknown"}
+          </strong>{" "}
+          •{" "}
           {new Date(post.created_at).toLocaleDateString("en-US", {
             month: "long",
             day: "numeric",
@@ -241,14 +417,13 @@ const renderComments = (commentList) => {
 
         <Divider sx={{ mb: 4 }} />
 
-        {/* Media Carousel */}
         {post.media && post.media.length > 0 && (
           <Box sx={{ mb: 4, display: "flex", justifyContent: "center" }}>
             <Slider {...sliderSettings} style={{ width: "100%" }}>
               {post.media.map((m) => (
                 <Box key={m.id} sx={{ textAlign: "center" }}>
                   <img
-                    src={`${BASE_URL}/${m.url}`}
+                    src={`${STORAGE_URL}/${m.url}`}
                     alt={post.title}
                     style={{
                       maxWidth: "100%",
@@ -267,7 +442,6 @@ const renderComments = (commentList) => {
 
         <Divider sx={{ mb: 4 }} />
 
-        {/* Post Content */}
         <Typography
           variant="body1"
           sx={{
@@ -280,38 +454,65 @@ const renderComments = (commentList) => {
         >
           {post.content}
         </Typography>
-<Box mt={4}>
-  <Button variant="outlined" onClick={() => { 
-    setCommentsVisible(!commentsVisible);
-    if (!commentsVisible) fetchComments();
-  }}>
-    {commentsVisible ? "Hide Comments" : "View Comments"}
-  </Button>
+        <Box mt={4}>
+          <Button
+            variant="text"
+            sx={{
+              fontSize: "12px",
+              gap: 1,
+              color: "black",
+            }}
+            onClick={() => {
+              setCommentsVisible(!commentsVisible);
+              if (!commentsVisible) fetchComments();
+            }}
+          >
+            <CommentIcon />
+            {commentsVisible ? "Hide Comments" : "View Comments"}
+          </Button>
 
-  {commentsVisible && (
-    <Box mt={2}>
-      {/* Add Comment Input */}
-      <Stack direction="row" spacing={1} mb={2}>
-        <input
-          type="text"
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          placeholder="Add a comment..."
-          style={{ flex: 1, padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-        />
-        <Button variant="contained" onClick={() => handleAddComment()}>Post</Button>
-      </Stack>
+          {commentsVisible && (
+            <Box mt={2}>
 
-      {loadingComments ? (
-        <CircularProgress size={24} />
-      ) : (
-        renderComments(comments)
-      )}
-    </Box>
-  )}
-</Box>
+              <Stack direction="row" spacing={1} mb={2}>
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  size="small"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Add a comment..."
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderColor: "black",
+                    },
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "black",
+                    },
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "black",
+                    },
+                    "& .MuiOutlinedInput-input": {
+                      padding: "10px",
+                    },
+                  }}
+                />
 
+                <Button variant="text" onClick={() => handleAddComment()}>
+                  <SendIcon />
+                </Button>
+              </Stack>
+
+              {loadingComments ? (
+                <CircularProgress size={24} />
+              ) : (
+                renderComments(comments)
+              )}
+            </Box>
+          )}
+        </Box>
       </Paper>
+      {errorMessage && <ErrorCard message={errorMessage} />}
     </Box>
   );
 };

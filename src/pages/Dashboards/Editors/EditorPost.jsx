@@ -16,6 +16,7 @@ import {
   TableRow,
   Button,
 } from "@mui/material";
+import authService from "../../../services/authService";
 
 function EditorPosts() {
   const [posts, setPosts] = useState([]);
@@ -28,7 +29,7 @@ function EditorPosts() {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get("/editor/posts");
+      const res = await authService.getPostByEditors();
       setPosts(res.data.reviews || []);
     } catch (err) {
       setError("Failed to load posts.");

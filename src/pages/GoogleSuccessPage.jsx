@@ -21,15 +21,15 @@ export default function GoogleSuccess() {
         .then((res) => {
           const userData = res.data;
           socialLogin(token, userData);
-          navigate("/dashboard"); 
+          navigate("/dashboard");
         })
         .catch((err) => {
-            console.log("failed");
+          console.log("failed");
           console.error("Google login failed:", err);
           navigate("/login");
         });
     } else {
-        console.log("fail");
+      console.log("fail");
       navigate("/login");
     }
   }, [navigate, socialLogin]);

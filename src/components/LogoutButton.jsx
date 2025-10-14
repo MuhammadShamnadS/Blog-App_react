@@ -7,13 +7,13 @@ const LogoutButton = () => {
   const { logout } = useContext(AuthContext);
 
   return (
-    <Button  variant="Text" onClick={logout} 
-    sx={{
-        borderRadius:'100px',
+    <Button variant="Text" onClick={logout}
+      sx={{
+        borderRadius: '100px',
         color: "white",
         "&:hover": { backgroundColor: "#0000002f" },
-    }}>
-      <LogoutIcon/>
+      }}>
+      <LogoutIcon />
       Logout
     </Button>
   );
